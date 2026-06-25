@@ -1,0 +1,3398 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+<title>Comi-Étudiant — Démo</title>
+<meta name="description" content="Comi-Étudiant — plateforme de commissions de services entre particuliers, Yaoundé" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%23B5542B%22/><text x=%2250%22 y=%2266%22 font-size=%2244%22 font-family=%22Georgia,serif%22 font-weight=%22800%22 fill=%22%23F2EDE4%22 text-anchor=%22middle%22>CE</text></svg>" />
+
+<!-- ====== CAPTURE D'ERREUR GLOBALE — doit être le tout premier script ======
+     Si quoi que ce soit casse plus loin (CDN bloqué, erreur JS, Supabase
+     inaccessible...), ceci affiche le détail à l'écran au lieu de laisser
+     l'app figée sur le loader. -->
+<script>
+  window.__ceErrors = [];
+  window.ceShowFatalError = function ceShowFatalError(title, detail) {
+    var loader = document.getElementById("boot-loader");
+    if (loader) loader.style.display = "none";
+    var existing = document.getElementById("ce-fatal-error");
+    if (existing) { 
+      var list = existing.querySelector("#ce-fatal-list");
+      var li = document.createElement("div");
+      li.style.marginTop = "10px";
+      li.textContent = detail;
+      list.appendChild(li);
+      return;
+    }
+    var box = document.createElement("div");
+    box.id = "ce-fatal-error";
+    box.innerHTML =
+      '<div style="max-width:480px;margin:60px auto;padding:22px;background:#2a1f1a;border:1.5px solid #B5542B;border-radius:14px;color:#F2EDE4;font-family:-apple-system,sans-serif;">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+          '<div style="width:34px;height:34px;border-radius:9px;background:#B5542B;display:flex;align-items:center;justify-content:center;font-weight:800;font-family:Georgia,serif;flex-shrink:0;">!</div>' +
+          '<div style="font-weight:700;font-size:16px;">Erreur de chargement</div>' +
+        '</div>' +
+        '<div style="font-size:13px;opacity:0.85;line-height:1.5;margin-bottom:14px;">' + title + '</div>' +
+        '<div id="ce-fatal-list" style="font-size:11.5px;font-family:monospace;background:#1A1814;padding:10px 12px;border-radius:8px;word-break:break-word;line-height:1.6;max-height:260px;overflow:auto;"><div>' + detail + '</div></div>' +
+        '<div style="font-size:11.5px;opacity:0.6;margin-top:14px;line-height:1.5;">Astuce : ouvre ce fichier via une vraie adresse https:// (déployé sur Netlify, Vercel...) plutôt qu\'en double-cliquant sur le fichier téléchargé — certains navigateurs bloquent des fonctionnalités essentielles (réseau, caméra) sur les fichiers locaux.</div>' +
+      '</div>';
+    box.style.position = "fixed";
+    box.style.inset = "0";
+    box.style.background = "#1A1814";
+    box.style.overflow = "auto";
+    box.style.zIndex = "99999";
+    if (document.body) {
+      document.body.appendChild(box);
+    } else {
+      document.addEventListener("DOMContentLoaded", function () {
+        document.body.appendChild(box);
+      });
+    }
+  }
+  window.addEventListener("error", function (e) {
+    ceShowFatalError(
+      "Une erreur JavaScript a empêché l'application de démarrer.",
+      (e.message || "Erreur inconnue") + (e.filename ? "\n@ " + e.filename + ":" + e.lineno : "")
+    );
+  });
+  window.addEventListener("unhandledrejection", function (e) {
+    ceShowFatalError(
+      "Une promesse a échoué sans être gérée (souvent un problème réseau).",
+      String(e.reason && e.reason.message ? e.reason.message : e.reason)
+    );
+  });
+  // Sécurité : si après 6s le loader est encore visible, c'est que React n'a
+  // jamais pris le relais (script CDN bloqué, erreur silencieuse...).
+  setTimeout(function () {
+    var loader = document.getElementById("boot-loader");
+    if (loader && loader.style.display !== "none" && document.getElementById("root").children.length === 0) {
+      ceShowFatalError(
+        "L'application met anormalement longtemps à démarrer.",
+        "Causes possibles : connexion internet absente, CDN bloqué (React/Babel/Supabase n'ont pas pu se charger), ou fichier ouvert en file:// au lieu d'une vraie URL https://."
+      );
+    }
+  }, 6000);
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js" onerror="ceShowFatalError('Le CDN React n\'a pas pu se charger.', 'Vérifie ta connexion internet, ou que unpkg.com n\'est pas bloqué par ton réseau/pare-feu.')"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" onerror="ceShowFatalError('Le CDN ReactDOM n\'a pas pu se charger.', 'Vérifie ta connexion internet, ou que unpkg.com n\'est pas bloqué par ton réseau/pare-feu.')"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js" onerror="ceShowFatalError('Le CDN Babel n\'a pas pu se charger.', 'Vérifie ta connexion internet, ou que unpkg.com n\'est pas bloqué par ton réseau/pare-feu.')"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js" onerror="ceShowFatalError('Le CDN Supabase n\'a pas pu se charger.', 'Vérifie ta connexion internet, ou que unpkg.com n\'est pas bloqué par ton réseau/pare-feu.')"></script>
+
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #1A1814; }
+  body { font-family: 'Inter', -apple-system, sans-serif; }
+  button { font-family: 'Inter', -apple-system, sans-serif; cursor: pointer; }
+  input, textarea { font-family: 'Inter', -apple-system, sans-serif; }
+  input:focus, textarea:focus, button:focus-visible { outline: 2px solid #D9A53F; outline-offset: 1px; }
+  ::placeholder { color: #A89E8E; }
+  #root { min-height: 100vh; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+  /* Boot loader shown before React mounts */
+  #boot-loader {
+    position: fixed; inset: 0; background: #1A1814;
+    display: flex; align-items: center; justify-content: center; z-index: 9999;
+  }
+  #boot-loader .mark {
+    width: 56px; height: 56px; border-radius: 14px;
+    background: #B5542B; color: #F2EDE4;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Fraunces', Georgia, serif; font-weight: 800; font-size: 22px;
+  }
+</style>
+</head>
+<body>
+
+<div id="boot-loader"><div class="mark">CE</div></div>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react" data-type="module">
+/* ============================================================================
+   COMI-ÉTUDIANT — Démo fonctionnelle déployable
+   Backend partagé : Supabase (table app_state, clé-valeur JSON)
+   Palette : terracotta #B5542B / vert billet #1F4D3A / crème #F2EDE4
+             encre #1A1814 / ocre sécurité #D9A53F
+   ============================================================================ */
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ---------------------------------------------------------------------------
+   ICÔNES — SVG inline (chemins officiels Lucide, licence ISC), pas de dépendance CDN fragile
+   --------------------------------------------------------------------------- */
+const ICON_PATHS = {
+  Wallet: ["M21 12V7H5a2 2 0 0 1 0-4h14v4", "M3 5v14a2 2 0 0 0 2 2h16v-5", "M18 12a2 2 0 0 0 0 4h4v-4Z"],
+  MapPin: ["M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z", "circle:12,10,3"],
+  Clock: ["circle:12,12,10", "M12 6v6l4 2"],
+  CheckCircle2: ["M21.801 10A10 10 0 1 1 17 3.335", "m9 11 3 3L22 4"],
+  Camera: ["M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z", "circle:12,13,3"],
+  PenTool: ["m12 19 7-7 3 3-7 7-3-3Z", "m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5Z", "m2 2 7.586 7.586", "circle:11,11,2"],
+  ShieldCheck: ["M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z", "m9 12 2 2 4-4"],
+  Plus: ["M5 12h14", "M12 5v14"],
+  ArrowLeft: ["M19 12H5", "m12 19-7-7 7-7"],
+  Upload: ["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M17 8l-5-5-5 5", "M12 3v12"],
+  X: ["M18 6 6 18", "M6 6l12 12"],
+  Package: ["M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73Z", "M12 22V12", "M3.3 7L12 12l8.7-5", "M7.5 4.27l9 5.15"],
+  ShoppingCart: ["circle:9,21,1", "circle:20,21,1", "M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"],
+  FileText: ["M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", "M14 2v4a2 2 0 0 0 2 2h4", "M10 9H8", "M16 13H8", "M16 17H8"],
+  Car: ["M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2", "circle:7,17,2", "M9 17h6", "circle:17,17,2"],
+  Star: ["M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16Z"],
+  History: ["M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", "M3 3v5h5", "M12 7v5l4 2"],
+  LogOut: ["M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4", "M16 17l5-5-5-5", "M21 12H9"],
+  ChevronRight: ["m9 18 6-6-6-6"],
+  AlertTriangle: ["M21.73 18 13.73 4a2 2 0 0 0-3.46 0L2.27 18a2 2 0 0 0 1.73 3h16a2 2 0 0 0 1.73-3Z", "M12 9v4", "M12 17h.01"],
+  RefreshCw: ["M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", "M21 3v5h-5", "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", "M8 16H3v5"],
+  Video: ["m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5", "rect:2,6,14,12,2"],
+  Square: ["rect:3,3,18,18,2"],
+  Check: ["M20 6 9 17l-5-5"],
+  Heart: ["M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"],
+  MessageCircle: ["M7.9 20A9 9 0 1 0 4 16.1L2 22Z"],
+  Phone: ["M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.738 1.602l-.464.355a1 1 0 0 0-.302 1.214 14.1 14.1 0 0 0 6.336 6.397Z"],
+  Send: ["M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11Z", "m21.854 2.147-10.94 10.939"],
+  PhoneOff: ["M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11l-1.27 1.27", "M22 2 2 22"],
+  Award: ["circle:12,8,6", "M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"],
+  Navigation: ["M3 11l19-9-9 19-2-8Z"],
+  Mic: ["M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z", "M19 10v2a7 7 0 0 1-14 0v-2", "M12 19v3"],
+  ImageIcon: ["rect:3,3,18,18,2", "circle:9,9,1.5", "m21 15-4.35-4.35a2 2 0 0 0-2.83 0L3 21"],
+  Lock: ["rect:3,11,18,11,2", "M7 11V7a5 5 0 0 1 10 0v4"],
+  Eye: ["M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0", "circle:12,12,3"],
+  EyeOff: ["M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49", "M14.084 14.158a3 3 0 0 1-4.242-4.242", "M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143", "M2 2l20 20"],
+  LayoutDashboard: ["rect:3,3,7,9,1", "rect:14,3,7,5,1", "rect:14,12,7,9,1", "rect:3,16,7,5,1"],
+  Users: ["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2", "circle:9,7,4", "M22 21v-2a4 4 0 0 0-3-3.87", "M16 3.13a4 4 0 0 1 0 7.75"],
+  TrendingUp: ["M16 7h6v6", "m22 7-8.5 8.5-5-5L2 17"],
+  DollarSign: ["M12 2v20", "M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"],
+};
+
+function Icon({ name, size = 18, color = "currentColor", fill = "none", style }) {
+  const paths = ICON_PATHS[name];
+  if (!paths) return null;
+  const fillColor = fill && fill !== "none" ? fill : "none";
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ flexShrink: 0, ...style }}
+    >
+      {paths.map((p, i) => {
+        if (p.startsWith("circle:")) {
+          const parts = p.replace("circle:", "").split(",");
+          return <circle key={i} cx={parts[0]} cy={parts[1]} r={parts[2]} fill={fillColor} stroke={color} />;
+        }
+        if (p.startsWith("rect:")) {
+          const parts = p.replace("rect:", "").split(",");
+          return <rect key={i} x={parts[0]} y={parts[1]} width={parts[2]} height={parts[3]} rx={parts[4] || 0} fill={fillColor} stroke={color} />;
+        }
+        return <path key={i} d={p} fill={fillColor} stroke={color} />;
+      })}
+    </svg>
+  );
+}
+
+// Wrappers pour garder la même syntaxe JSX qu'avant (<Wallet size={14} />) sans tout réécrire
+function makeIconComponent(name) {
+  return function IconWrapper(props) { return <Icon name={name} {...props} />; };
+}
+const Wallet = makeIconComponent("Wallet");
+const MapPin = makeIconComponent("MapPin");
+const Clock = makeIconComponent("Clock");
+const CheckCircle2 = makeIconComponent("CheckCircle2");
+const Camera = makeIconComponent("Camera");
+const PenTool = makeIconComponent("PenTool");
+const ShieldCheck = makeIconComponent("ShieldCheck");
+const Plus = makeIconComponent("Plus");
+const ArrowLeft = makeIconComponent("ArrowLeft");
+const Upload = makeIconComponent("Upload");
+const X = makeIconComponent("X");
+const Package = makeIconComponent("Package");
+const ShoppingCart = makeIconComponent("ShoppingCart");
+const FileText = makeIconComponent("FileText");
+const Car = makeIconComponent("Car");
+const Star = makeIconComponent("Star");
+const History = makeIconComponent("History");
+const LogOut = makeIconComponent("LogOut");
+const ChevronRight = makeIconComponent("ChevronRight");
+const AlertTriangle = makeIconComponent("AlertTriangle");
+const RefreshCw = makeIconComponent("RefreshCw");
+const Video = makeIconComponent("Video");
+const Square = makeIconComponent("Square");
+const Check = makeIconComponent("Check");
+const Heart = makeIconComponent("Heart");
+const MessageCircle = makeIconComponent("MessageCircle");
+const Phone = makeIconComponent("Phone");
+const Send = makeIconComponent("Send");
+const ImageIcon = makeIconComponent("ImageIcon");
+const PhoneOff = makeIconComponent("PhoneOff");
+const Award = makeIconComponent("Award");
+const Navigation = makeIconComponent("Navigation");
+const Mic = makeIconComponent("Mic");
+const LayoutDashboard = makeIconComponent("LayoutDashboard");
+const Users = makeIconComponent("Users");
+const TrendingUp = makeIconComponent("TrendingUp");
+const DollarSign = makeIconComponent("DollarSign");
+const Lock = makeIconComponent("Lock");
+const Eye = makeIconComponent("Eye");
+const EyeOff = makeIconComponent("EyeOff");
+
+/* ---------------------------------------------------------------------------
+   SUPABASE CLIENT — backend partagé entre tous les testeurs
+   --------------------------------------------------------------------------- */
+const SUPABASE_URL = "https://jypzfjllghtdubodddkv.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5cHpmamxsZ2h0ZHVib2RkZGt2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNzUzMTQsImV4cCI6MjA5Nzg1MTMxNH0.ZM_rBkYFqZn2uTFrFSr1JKuN5FTl5jCPOd60y1mULjM";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+async function dbGet(key, fallback) {
+  try {
+    const { data, error } = await sb.from("app_state").select("value").eq("key", key).maybeSingle();
+    if (error || !data) return fallback;
+    return data.value;
+  } catch (e) {
+    console.error("dbGet failed", key, e);
+    return fallback;
+  }
+}
+async function dbSet(key, value) {
+  try {
+    const { error } = await sb.from("app_state").upsert({ key, value, updated_at: new Date().toISOString() });
+    if (error) console.error("dbSet error", key, error);
+  } catch (e) {
+    console.error("dbSet failed", key, e);
+  }
+}
+
+// Stockage purement local à l'appareil (session de connexion uniquement)
+function loadLocalDevice(key, fallback) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch { return fallback; }
+}
+function saveLocalDevice(key, value) {
+  try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+}
+
+/* ---------------------------------------------------------------------------
+   CONSTANTES MÉTIER
+   --------------------------------------------------------------------------- */
+const COMMISSION_RATE = 0.14;
+const WALLET_DEMANDEUR_INITIAL = 100000;
+const WALLET_EXECUTANT_INITIAL = 10000;
+const ADMIN_PASSWORD = "comi2026admin";
+
+const CATEGORIES = [
+  { id: "courses", label: "Courses & Achats", icon: ShoppingCart, range: [1000, 4000] },
+  { id: "colis", label: "Livraison de colis", icon: Package, range: [500, 2500] },
+  { id: "admin", label: "Services administratifs", icon: FileText, range: [500, 2000] },
+  { id: "transport", label: "Transport & accompagnement", icon: Car, range: [1500, 8000] },
+];
+
+const RATING_CRITERIA = [
+  { id: "qualite", label: "Qualité d'exécution", weight: 0.35 },
+  { id: "ponctualite", label: "Ponctualité", weight: 0.25 },
+  { id: "communication", label: "Communication", weight: 0.20 },
+  { id: "attitude", label: "Attitude & professionnalisme", weight: 0.15 },
+  { id: "presentation", label: "Présentation", weight: 0.05 },
+];
+
+const LEVELS = [
+  { id: "debutant", label: "Débutant", minComm: 0, minNote: 0, color: "#9a9285" },
+  { id: "confirme", label: "Confirmé", minComm: 11, minNote: 4.0, color: "#3a6ea5" },
+  { id: "experimente", label: "Expérimenté", minComm: 51, minNote: 4.3, color: "#B5542B" },
+  { id: "expert", label: "Expert", minComm: 151, minNote: 4.6, color: "#1F4D3A" },
+  { id: "elite", label: "Élite", minComm: 300, minNote: 4.8, color: "#D9A53F" },
+];
+
+function computeLevel(nbCommissions, noteGlobale) {
+  let current = LEVELS[0];
+  for (const lvl of LEVELS) {
+    if (nbCommissions >= lvl.minComm && noteGlobale >= lvl.minNote) current = lvl;
+  }
+  return current;
+}
+
+const MAX_FAVORIS = 20;
+
+const DB_KEYS = {
+  users: "ce_users",
+  commissions: "ce_commissions",
+  chats: "ce_chats",
+};
+
+function uid(prefix = "id") {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+function fmtFCFA(n) {
+  return Math.round(n || 0).toLocaleString("fr-FR").replace(/,/g, " ") + " FCFA";
+}
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return "à l'instant";
+  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
+  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
+  return `il y a ${Math.floor(s / 86400)} j`;
+}
+
+/* ============================= ROOT APP ============================= */
+function App() {
+  const [loading, setLoading] = useState(true);
+  const [connError, setConnError] = useState(false);
+  const [users, setUsers] = useState({});
+  const [commissions, setCommissions] = useState([]);
+  const [chats, setChats] = useState({});
+  const [sessionUserId, setSessionUserId] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [view, setView] = useState("auth"); // auth | home | admin
+  const [role, setRole] = useState("demandeur");
+  const [toast, setToast] = useState(null);
+
+  const usersRef = useRef(users);
+  usersRef.current = users;
+  const commissionsRef = useRef(commissions);
+  commissionsRef.current = commissions;
+  const chatsRef = useRef(chats);
+  chatsRef.current = chats;
+
+  // Chargement initial + polling pour synchroniser entre appareils
+  useEffect(() => {
+    let cancelled = false;
+    let pollTimer = null;
+
+    async function fetchAll() {
+      const [u, c, ch] = await Promise.all([
+        dbGet(DB_KEYS.users, {}),
+        dbGet(DB_KEYS.commissions, []),
+        dbGet(DB_KEYS.chats, {}),
+      ]);
+      if (cancelled) return;
+      setUsers(u || {});
+      setCommissions(c || []);
+      setChats(ch || {});
+      return { u, c, ch };
+    }
+
+    (async () => {
+      try {
+        const result = await fetchAll();
+        const adminFlag = loadLocalDevice("ce_is_admin", false);
+        const s = loadLocalDevice("ce_session", null);
+        if (adminFlag) {
+          setIsAdmin(true);
+          setView("admin");
+        } else if (s && result?.u && result.u[s]) {
+          setSessionUserId(s);
+          setView("home");
+        }
+      } catch (e) {
+        setConnError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    // Polling léger toutes les 4s pour voir les actions des autres testeurs
+    pollTimer = setInterval(() => { fetchAll().catch(() => {}); }, 4000);
+
+    return () => { cancelled = true; if (pollTimer) clearInterval(pollTimer); };
+  }, []);
+
+  const showToast = useCallback((msg, kind = "info") => {
+    setToast({ msg, kind, id: Date.now() });
+    setTimeout(() => setToast((t) => (t && t.id === Date.now() ? null : t)), 3200);
+  }, []);
+
+  const persistUsers = useCallback(async (next) => {
+    setUsers(next);
+    await dbSet(DB_KEYS.users, next);
+  }, []);
+  const persistCommissions = useCallback(async (next) => {
+    setCommissions(next);
+    await dbSet(DB_KEYS.commissions, next);
+  }, []);
+  const persistChats = useCallback(async (next) => {
+    setChats(next);
+    await dbSet(DB_KEYS.chats, next);
+  }, []);
+
+  async function updateUser(userId, patch) {
+    const current = usersRef.current;
+    const next = { ...current, [userId]: { ...current[userId], ...patch } };
+    await persistUsers(next);
+  }
+
+  async function handleLogin(phone, name) {
+    const existing = Object.values(usersRef.current).find((u) => u.phone === phone);
+    if (existing) {
+      setSessionUserId(existing.id);
+      saveLocalDevice("ce_session", existing.id);
+      setView("home");
+      showToast(`Content de te revoir, ${existing.name.split(" ")[0]} !`);
+      return;
+    }
+    const newUser = {
+      id: uid("user"),
+      name,
+      phone,
+      walletDemandeur: WALLET_DEMANDEUR_INITIAL,
+      walletExecutant: WALLET_EXECUTANT_INITIAL,
+      kyc: { status: "none", docs: {} },
+      ratingDemandeur: { avg: 5, count: 0 },
+      scoreExecutant: {
+        noteGlobale: 5,
+        nbCommissions: 0,
+        tauxCompletion: 100,
+        details: { qualite: 5, ponctualite: 5, communication: 5, attitude: 5, presentation: 5 },
+        notesRecues: [],
+      },
+      favoris: [],
+      createdAt: Date.now(),
+    };
+    const next = { ...usersRef.current, [newUser.id]: newUser };
+    await persistUsers(next);
+    setSessionUserId(newUser.id);
+    saveLocalDevice("ce_session", newUser.id);
+    setView("home");
+    showToast("Compte créé. Bienvenue sur Comi-Étudiant !");
+  }
+
+  async function handleLogout() {
+    setSessionUserId(null);
+    saveLocalDevice("ce_session", null);
+    setView("auth");
+  }
+
+  function handleAdminLogin() {
+    setIsAdmin(true);
+    saveLocalDevice("ce_is_admin", true);
+    setView("admin");
+  }
+  function handleAdminLogout() {
+    setIsAdmin(false);
+    saveLocalDevice("ce_is_admin", false);
+    setView("auth");
+  }
+
+  const me = sessionUserId ? users[sessionUserId] : null;
+
+  if (loading) {
+    return (
+      <div style={styles.loadingScreen}>
+        <div style={styles.loadingMark}>CE</div>
+      </div>
+    );
+  }
+
+  if (connError) {
+    return (
+      <Shell>
+        <div style={styles.connErrorWrap}>
+          <AlertTriangle size={32} color="#B5542B" />
+          <div style={styles.connErrorTitle}>Connexion au serveur impossible</div>
+          <div style={styles.connErrorText}>
+            Vérifie la configuration Supabase (URL et clé API) dans le code, ou ta connexion internet.
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
+  if (view === "admin" && isAdmin) {
+    return (
+      <Shell wide>
+        <AdminDashboard
+          users={users}
+          commissions={commissions}
+          onLogout={handleAdminLogout}
+        />
+      </Shell>
+    );
+  }
+
+  if (view === "auth" || !me) {
+    return (
+      <Shell>
+        <AuthScreen onLogin={handleLogin} onAdminLogin={handleAdminLogin} />
+      </Shell>
+    );
+  }
+
+  return (
+    <Shell>
+      <AppHome
+        me={me}
+        users={users}
+        commissions={commissions}
+        chats={chats}
+        persistChats={persistChats}
+        role={role}
+        setRole={setRole}
+        updateUser={updateUser}
+        persistCommissions={persistCommissions}
+        showToast={showToast}
+        onLogout={handleLogout}
+      />
+      {toast && <Toast toast={toast} />}
+    </Shell>
+  );
+}
+
+/* ============================= SHELL / THEME ============================= */
+function Shell({ children, wide }) {
+  return (
+    <div style={styles.appRoot}>
+      <div style={{ ...styles.phoneFrame, ...(wide ? styles.wideFrame : {}) }}>{children}</div>
+    </div>
+  );
+}
+
+function Toast({ toast }) {
+  return (
+    <div style={{ ...styles.toast, ...(toast.kind === "error" ? styles.toastError : {}) }}>
+      {toast.msg}
+    </div>
+  );
+}
+
+/* ============================= AUTH ============================= */
+/* ============================= APP HOME (post-login) ============================= */
+function AppHome({
+  me, users, commissions, chats, persistChats, role, setRole,
+  updateUser, persistCommissions, showToast, onLogout,
+}) {
+  const [screen, setScreen] = useState("feed");
+  const [activeCommission, setActiveCommission] = useState(null);
+  const [profileUserId, setProfileUserId] = useState(null);
+
+  const myCommissionsAsDemandeur = commissions.filter((c) => c.demandeurId === me.id);
+  const myCommissionsAsExecutant = commissions.filter((c) => c.executantId === me.id);
+
+  function openDetail(commission) {
+    setActiveCommission(commission);
+    setScreen("detail");
+  }
+  function openProfile(userId) {
+    setProfileUserId(userId);
+    setScreen("profile");
+  }
+  async function updateFavoris(demandeurId, nextFavoris) {
+    await updateUser(demandeurId, { favoris: nextFavoris });
+  }
+
+  const liveCommission = activeCommission
+    ? commissions.find((c) => c.id === activeCommission.id) || activeCommission
+    : null;
+
+  return (
+    <div style={styles.screenWrap}>
+      <TopBar me={me} role={role} onLogout={onLogout} />
+      <RoleToggle role={role} setRole={(r) => { setRole(r); setScreen("feed"); }} />
+
+      <div style={styles.content}>
+        {screen === "feed" && role === "demandeur" && (
+          <DemandeurFeed
+            me={me}
+            users={users}
+            commissions={myCommissionsAsDemandeur}
+            onPublish={() => setScreen("publish")}
+            onOpen={openDetail}
+            onGoFavoris={() => setScreen("favoris")}
+          />
+        )}
+
+        {screen === "feed" && role === "executant" && (
+          <ExecutantFeed
+            me={me}
+            users={users}
+            commissions={commissions}
+            myCommissions={myCommissionsAsExecutant}
+            onOpen={openDetail}
+            onGoKyc={() => setScreen("kyc")}
+            onOpenProfile={openProfile}
+          />
+        )}
+
+        {screen === "publish" && (
+          <PublishScreen
+            me={me}
+            onBack={() => setScreen("feed")}
+            onPublished={async (commission) => {
+              const next = [commission, ...commissions];
+              await persistCommissions(next);
+              await updateUser(me.id, { walletDemandeur: me.walletDemandeur - commission.totalDebited });
+              showToast("Commission publiée et fonds bloqués en escrow.");
+              setScreen("feed");
+            }}
+          />
+        )}
+
+        {screen === "kyc" && (
+          <KycScreen
+            me={me}
+            onBack={() => setScreen("feed")}
+            onSubmit={async (docs) => {
+              await updateUser(me.id, { kyc: { status: "pending", docs } });
+              showToast("Dossier KYC envoyé. Validation sous 24-48h (simulée).");
+              setScreen("feed");
+            }}
+            onForceVerify={async () => {
+              await updateUser(me.id, { kyc: { ...me.kyc, status: "verified" } });
+              showToast("KYC validé (simulation démo) ✅");
+            }}
+          />
+        )}
+
+        {screen === "detail" && liveCommission && (
+          <DetailScreen
+            me={me}
+            role={role}
+            commission={liveCommission}
+            users={users}
+            chats={chats}
+            onSendChat={async (commissionId, message) => {
+              const thread = chats[commissionId] || [];
+              const next = { ...chats, [commissionId]: [...thread, message] };
+              await persistChats(next);
+            }}
+            onBack={() => setScreen("feed")}
+            onUpdateCommission={async (patch) => {
+              const next = commissions.map((c) =>
+                c.id === activeCommission.id ? { ...c, ...patch } : c
+              );
+              await persistCommissions(next);
+              setActiveCommission({ ...liveCommission, ...patch });
+            }}
+            updateUser={updateUser}
+            updateFavoris={updateFavoris}
+            showToast={showToast}
+            onOpenProfile={openProfile}
+          />
+        )}
+
+        {screen === "favoris" && (
+          <FavorisScreen
+            me={me}
+            users={users}
+            commissions={commissions}
+            onBack={() => setScreen("feed")}
+            updateUser={updateUser}
+            persistCommissions={persistCommissions}
+            showToast={showToast}
+            onOpenProfile={openProfile}
+            onOpenCommission={openDetail}
+          />
+        )}
+
+        {screen === "profile" && profileUserId && users[profileUserId] && (
+          <ExecutantProfileScreen
+            executant={users[profileUserId]}
+            me={me}
+            commissions={commissions}
+            onBack={() => setScreen(role === "demandeur" ? "favoris" : "feed")}
+            updateUser={updateUser}
+            showToast={showToast}
+          />
+        )}
+
+        {screen === "history" && (
+          <HistoryScreen
+            me={me}
+            commissions={commissions.filter(
+              (c) => c.demandeurId === me.id || c.executantId === me.id
+            )}
+            onOpen={openDetail}
+          />
+        )}
+      </div>
+
+      <BottomNav
+        screen={screen}
+        setScreen={setScreen}
+        kycStatus={me.kyc?.status}
+        role={role}
+      />
+    </div>
+  );
+}
+
+/* ============================= TOP BAR / ROLE TOGGLE / NAV ============================= */
+function TopBar({ me, role, onLogout }) {
+  const balance = role === "demandeur" ? me.walletDemandeur : me.walletExecutant;
+  return (
+    <div style={styles.topBar}>
+      <div style={styles.topBarLeft}>
+        <div style={styles.miniStamp}>CE</div>
+        <div>
+          <div style={styles.topBarName}>{me.name.split(" ")[0]}</div>
+          <div style={styles.topBarSub}>
+            <MapPin size={11} style={{ marginRight: 3, verticalAlign: -2 }} />
+            Yaoundé
+          </div>
+        </div>
+      </div>
+      <div style={styles.topBarRight}>
+        <div style={styles.walletPill}>
+          <Wallet size={14} />
+          {fmtFCFA(balance)}
+        </div>
+        <button style={styles.iconBtn} onClick={onLogout} title="Se déconnecter">
+          <LogOut size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function RoleToggle({ role, setRole }) {
+  return (
+    <div style={styles.roleToggleWrap}>
+      <button
+        style={{ ...styles.roleBtn, ...(role === "demandeur" ? styles.roleBtnActive : {}) }}
+        onClick={() => setRole("demandeur")}
+      >
+        Je suis demandeur
+      </button>
+      <button
+        style={{ ...styles.roleBtn, ...(role === "executant" ? styles.roleBtnActive : {}) }}
+        onClick={() => setRole("executant")}
+      >
+        Je suis exécutant
+      </button>
+    </div>
+  );
+}
+
+function BottomNav({ screen, setScreen, kycStatus, role }) {
+  return (
+    <div style={styles.bottomNav}>
+      <NavBtn active={screen === "feed"} icon={ChevronRight} label="Accueil" onClick={() => setScreen("feed")} />
+      {role === "executant" && (
+        <NavBtn
+          active={screen === "kyc"}
+          icon={ShieldCheck}
+          label="KYC"
+          badge={kycStatus === "verified" ? "ok" : kycStatus === "pending" ? "wait" : "alert"}
+          onClick={() => setScreen("kyc")}
+        />
+      )}
+      {role === "demandeur" && (
+        <NavBtn active={screen === "favoris"} icon={Heart} label="Favoris" onClick={() => setScreen("favoris")} />
+      )}
+      <NavBtn active={screen === "history"} icon={History} label="Historique" onClick={() => setScreen("history")} />
+    </div>
+  );
+}
+
+function NavBtn({ active, icon: Icon, label, onClick, badge }) {
+  return (
+    <button style={{ ...styles.navBtn, ...(active ? styles.navBtnActive : {}) }} onClick={onClick}>
+      <div style={{ position: "relative" }}>
+        <Icon size={20} />
+        {badge && (
+          <span
+            style={{
+              ...styles.navBadge,
+              background: badge === "ok" ? "#1F4D3A" : badge === "wait" ? "#D9A53F" : "#B5542B",
+            }}
+          />
+        )}
+      </div>
+      <span style={styles.navLabel}>{label}</span>
+    </button>
+  );
+}
+
+/* ============================= AUTH ============================= */
+function AuthScreen({ onLogin, onAdminLogin }) {
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [step, setStep] = useState("phone");
+  const [showAdminForm, setShowAdminForm] = useState(false);
+  const [adminPwd, setAdminPwd] = useState("");
+  const [adminError, setAdminError] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+
+  function submitAdmin() {
+    if (adminPwd === ADMIN_PASSWORD) {
+      onAdminLogin();
+    } else {
+      setAdminError(true);
+    }
+  }
+
+  return (
+    <div style={styles.authWrap}>
+      <div style={styles.authHero}>
+        <div style={styles.stamp}>CE</div>
+        <h1 style={styles.authTitle}>Comi-Étudiant</h1>
+        <p style={styles.authSlogan}>Votre commission, notre mission.</p>
+      </div>
+
+      <div style={styles.authCard}>
+        {!showAdminForm ? (
+          <>
+            {step === "phone" ? (
+              <>
+                <label style={styles.label}>Numéro de téléphone</label>
+                <input
+                  style={styles.input}
+                  placeholder="6XX XXX XXX"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  inputMode="numeric"
+                />
+                <button
+                  style={styles.btnPrimary}
+                  disabled={phone.trim().length < 6}
+                  onClick={() => setStep("name")}
+                >
+                  Continuer
+                </button>
+              </>
+            ) : (
+              <>
+                <label style={styles.label}>Ton nom complet</label>
+                <input
+                  style={styles.input}
+                  placeholder="Ex : Kevin Mballa"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoFocus
+                />
+                <button
+                  style={styles.btnPrimary}
+                  disabled={name.trim().length < 2}
+                  onClick={() => onLogin(phone.trim(), name.trim())}
+                >
+                  Entrer sur Comi-Étudiant
+                </button>
+                <button style={styles.btnGhost} onClick={() => setStep("phone")}>
+                  Retour
+                </button>
+              </>
+            )}
+            <p style={styles.authNote}>
+              Démo de test avec fonds virtuels — {fmtFCFA(WALLET_DEMANDEUR_INITIAL)} côté demandeur et{" "}
+              {fmtFCFA(WALLET_EXECUTANT_INITIAL)} côté exécutant sont crédités automatiquement à la création du compte.
+            </p>
+            <button style={styles.adminLinkBtn} onClick={() => setShowAdminForm(true)}>
+              <Lock size={11} /> Accès administrateur
+            </button>
+          </>
+        ) : (
+          <>
+            <label style={styles.label}>Mot de passe administrateur</label>
+            <div style={styles.pwdRow}>
+              <input
+                style={{ ...styles.input, marginBottom: 0, flex: 1 }}
+                type={showPwd ? "text" : "password"}
+                value={adminPwd}
+                onChange={(e) => { setAdminPwd(e.target.value); setAdminError(false); }}
+                onKeyDown={(e) => { if (e.key === "Enter") submitAdmin(); }}
+                autoFocus
+              />
+              <button style={styles.pwdEyeBtn} onClick={() => setShowPwd((s) => !s)}>
+                {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {adminError && (
+              <div style={styles.warningBox}>
+                <AlertTriangle size={14} /> Mot de passe incorrect.
+              </div>
+            )}
+            <button style={{ ...styles.btnPrimary, marginTop: 14 }} onClick={submitAdmin}>
+              Entrer dans le tableau de bord
+            </button>
+            <button style={styles.btnGhost} onClick={() => { setShowAdminForm(false); setAdminPwd(""); setAdminError(false); }}>
+              Retour
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+
+/* ============================= DEMANDEUR FEED ============================= */
+function DemandeurFeed({ me, users, commissions, onPublish, onOpen, onGoFavoris }) {
+  const active = commissions.filter((c) => c.status !== "validee" && c.status !== "remboursee");
+  const past = commissions.filter((c) => c.status === "validee" || c.status === "remboursee");
+  const favorisCount = (me.favoris || []).filter((f) => f.status === "accepted").length;
+
+  return (
+    <div style={styles.feedPad}>
+      <SectionHeading title="Publier une commission" subtitle="Fais exécuter une tâche par un étudiant vérifié" />
+      <button style={styles.publishCard} onClick={onPublish}>
+        <div style={styles.publishCardIcon}>
+          <Plus size={22} color="#F2EDE4" />
+        </div>
+        <div>
+          <div style={styles.publishCardTitle}>Nouvelle commission</div>
+          <div style={styles.publishCardSub}>Courses, colis, démarches, transport...</div>
+        </div>
+      </button>
+
+      {favorisCount > 0 && (
+        <button style={styles.favorisShortcut} onClick={onGoFavoris}>
+          <Heart size={16} color="#B5542B" fill="#B5542B" />
+          <span style={styles.favorisShortcutText}>
+            {favorisCount} exécutant{favorisCount > 1 ? "s" : ""} favori{favorisCount > 1 ? "s" : ""} — envoyer une commission directe
+          </span>
+          <ChevronRight size={15} />
+        </button>
+      )}
+
+      {active.length > 0 && (
+        <>
+          <SectionHeading title="En cours" subtitle={`${active.length} commission(s) active(s)`} />
+          {active.map((c) => (
+            <CommissionTicket key={c.id} commission={c} viewerRole="demandeur" onClick={() => onOpen(c)} />
+          ))}
+        </>
+      )}
+
+      {past.length > 0 && (
+        <>
+          <SectionHeading title="Terminées" subtitle="" />
+          {past.slice(0, 3).map((c) => (
+            <CommissionTicket key={c.id} commission={c} viewerRole="demandeur" onClick={() => onOpen(c)} />
+          ))}
+        </>
+      )}
+
+      {active.length === 0 && past.length === 0 && (
+        <EmptyState
+          icon={Package}
+          title="Aucune commission encore"
+          text="Publie ta première commission pour qu'un exécutant la prenne en charge."
+        />
+      )}
+    </div>
+  );
+}
+
+/* ============================= EXECUTANT FEED ============================= */
+function ExecutantFeed({ me, users, commissions, myCommissions, onOpen, onGoKyc, onOpenProfile }) {
+  const kycVerified = me.kyc?.status === "verified";
+  const available = commissions.filter(
+    (c) => c.status === "publiee" && c.demandeurId !== me.id && !c.directTo
+  );
+  const directOffers = commissions.filter(
+    (c) => c.status === "publiee" && c.directTo === me.id
+  );
+  const mine = myCommissions.filter((c) => c.status !== "validee" && c.status !== "remboursee");
+  const level = computeLevel(me.scoreExecutant?.nbCommissions || 0, me.scoreExecutant?.noteGlobale || 5);
+
+  return (
+    <div style={styles.feedPad}>
+      {!kycVerified && (
+        <button style={styles.kycBanner} onClick={onGoKyc}>
+          <ShieldCheck size={18} />
+          <div style={{ flex: 1, textAlign: "left" }}>
+            <div style={styles.kycBannerTitle}>
+              {me.kyc?.status === "pending" ? "KYC en attente de validation" : "Vérifie ton identité (KYC)"}
+            </div>
+            <div style={styles.kycBannerSub}>
+              {me.kyc?.status === "pending"
+                ? "Tu pourras accepter des commissions une fois validé."
+                : "Obligatoire pour accepter une commission"}
+            </div>
+          </div>
+          <ChevronRight size={16} />
+        </button>
+      )}
+
+      {kycVerified && (
+        <button style={styles.myLevelCard} onClick={() => onOpenProfile(me.id)}>
+          <div style={{ ...styles.levelBadgeBig, background: level.color }}>
+            <Award size={16} color="#F2EDE4" />
+          </div>
+          <div style={{ flex: 1, textAlign: "left" }}>
+            <div style={styles.myLevelTitle}>Niveau {level.label}</div>
+            <div style={styles.myLevelSub}>
+              Note {Number(me.scoreExecutant?.noteGlobale || 5).toFixed(1)}/5 · {me.scoreExecutant?.nbCommissions || 0} commission(s)
+            </div>
+          </div>
+          <ChevronRight size={15} />
+        </button>
+      )}
+
+      {directOffers.length > 0 && (
+        <>
+          <SectionHeading title="Commission directe pour toi" subtitle="Un demandeur fidèle t'a choisi en priorité" />
+          {directOffers.map((c) => (
+            <CommissionTicket key={c.id} commission={c} viewerRole="executant" demandeur={users[c.demandeurId]} onClick={() => onOpen(c)} direct />
+          ))}
+        </>
+      )}
+
+      {mine.length > 0 && (
+        <>
+          <SectionHeading title="Mes missions en cours" subtitle={`${mine.length} en cours`} />
+          {mine.map((c) => (
+            <CommissionTicket key={c.id} commission={c} viewerRole="executant" onClick={() => onOpen(c)} />
+          ))}
+        </>
+      )}
+
+      <SectionHeading
+        title="Commissions disponibles"
+        subtitle={`${available.length} près de toi`}
+      />
+      {available.length === 0 && (
+        <EmptyState
+          icon={ShoppingCart}
+          title="Aucune commission disponible"
+          text="Reviens plus tard, ou demande à un autre testeur de publier une commission."
+        />
+      )}
+      {available.map((c) => (
+        <CommissionTicket
+          key={c.id}
+          commission={c}
+          viewerRole="executant"
+          demandeur={users[c.demandeurId]}
+          onClick={() => onOpen(c)}
+          locked={!kycVerified}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ============================= COMMISSION TICKET ============================= */
+const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]));
+
+const STATUS_LABEL = {
+  publiee: { label: "Publiée", color: "#D9A53F" },
+  en_cours: { label: "En cours", color: "#B5542B" },
+  remise: { label: "Remise effectuée", color: "#1F4D3A" },
+  validee: { label: "Validée", color: "#1F4D3A" },
+  remboursee: { label: "Remboursée", color: "#8a4a3a" },
+};
+
+function CommissionTicket({ commission, viewerRole, demandeur, onClick, locked, direct }) {
+  const cat = CATEGORY_MAP[commission.category];
+  const Icon = cat?.icon || Package;
+  const status = STATUS_LABEL[commission.status];
+
+  return (
+    <button style={styles.ticket} onClick={onClick} disabled={locked}>
+      {direct && (
+        <div style={styles.directBadge}>
+          <Heart size={10} fill="#F2EDE4" /> COMMISSION DIRECTE
+        </div>
+      )}
+      <div style={styles.ticketTopRow}>
+        <div style={styles.ticketIconWrap}>
+          <Icon size={16} color="#F2EDE4" />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={styles.ticketTitle}>{cat?.label || "Commission"}</div>
+          <div style={styles.ticketDesc}>{commission.description}</div>
+        </div>
+        <span style={{ ...styles.statusChip, background: status?.color }}>{status?.label}</span>
+      </div>
+      <div style={styles.ticketDivider} />
+      <div style={styles.ticketBottomRow}>
+        <div style={styles.ticketMeta}>
+          <Clock size={12} /> {timeAgo(commission.createdAt)}
+        </div>
+        {demandeur && (
+          <div style={styles.ticketMeta}>
+            <Star size={12} fill="#D9A53F" color="#D9A53F" /> {demandeur.ratingDemandeur?.avg?.toFixed(1) ?? "5.0"}
+          </div>
+        )}
+        <div style={styles.ticketAmount}>
+          {viewerRole === "executant" ? `+ ${fmtFCFA(commission.executantPayout)}` : fmtFCFA(commission.totalDebited)}
+        </div>
+      </div>
+      {locked && (
+        <div style={styles.ticketLockedOverlay}>
+          <ShieldCheck size={14} /> KYC requis pour accepter
+        </div>
+      )}
+    </button>
+  );
+}
+
+/* ============================= PUBLISH SCREEN ============================= */
+function PublishScreen({ me, onBack, onPublished }) {
+  const [category, setCategory] = useState(CATEGORIES[0].id);
+  const [description, setDescription] = useState("");
+  const [montantTache, setMontantTache] = useState("");
+  const [montantCommission, setMontantCommission] = useState("");
+  const [delai, setDelai] = useState("3h");
+
+  const tache = parseInt(montantTache || "0", 10) || 0;
+  const commission = parseInt(montantCommission || "0", 10) || 0;
+  const fraisPlateforme = Math.round(commission * COMMISSION_RATE);
+  const executantPayout = commission - fraisPlateforme;
+  const total = tache + commission;
+  const insufficientFunds = total > 0 && total > me.walletDemandeur;
+  const canPublish = description.trim().length >= 5 && commission > 0 && !insufficientFunds;
+
+  function handlePublish() {
+    if (!canPublish) return;
+    const c = {
+      id: uid("comm"),
+      demandeurId: me.id,
+      executantId: null,
+      category,
+      description: description.trim(),
+      montantTache: tache,
+      montantCommission: commission,
+      fraisPlateforme,
+      executantPayout,
+      totalDebited: total,
+      delai,
+      status: "publiee",
+      createdAt: Date.now(),
+      timeline: [{ label: "Commission publiée", ts: Date.now() }],
+      proof: {},
+    };
+    onPublished(c);
+  }
+
+  return (
+    <div style={styles.screenPad}>
+      <ScreenHeader title="Nouvelle commission" onBack={onBack} />
+
+      <Label>Catégorie de service</Label>
+      <div style={styles.categoryGrid}>
+        {CATEGORIES.map((c) => {
+          const Icon = c.icon;
+          const active = category === c.id;
+          return (
+            <button
+              key={c.id}
+              onClick={() => setCategory(c.id)}
+              style={{ ...styles.categoryCard, ...(active ? styles.categoryCardActive : {}) }}
+            >
+              <Icon size={20} color={active ? "#F2EDE4" : "#1A1814"} />
+              <span style={{ ...styles.categoryCardLabel, color: active ? "#F2EDE4" : "#1A1814" }}>
+                {c.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <Label>Description de la commission</Label>
+      <textarea
+        style={styles.textarea}
+        placeholder="Ex : Acheter 2kg de riz et 1L d'huile au marché Mokolo, livrer à Bastos..."
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        rows={3}
+      />
+
+      <Label>Montant nécessaire pour la tâche (FCFA)</Label>
+      <input
+        style={styles.input}
+        placeholder="Ex : 8000"
+        inputMode="numeric"
+        value={montantTache}
+        onChange={(e) => setMontantTache(e.target.value.replace(/\D/g, ""))}
+      />
+
+      <Label>Ta commission pour l'exécutant (FCFA)</Label>
+      <input
+        style={styles.input}
+        placeholder="Ex : 1500"
+        inputMode="numeric"
+        value={montantCommission}
+        onChange={(e) => setMontantCommission(e.target.value.replace(/\D/g, ""))}
+      />
+      <div style={styles.helperRow}>
+        Suggestion pour cette catégorie :{" "}
+        {CATEGORY_MAP[category].range[0].toLocaleString("fr-FR")}–
+        {CATEGORY_MAP[category].range[1].toLocaleString("fr-FR")} FCFA
+      </div>
+
+      <Label>Délai souhaité</Label>
+      <div style={styles.chipRow}>
+        {["1h", "3h", "Aujourd'hui", "Flexible"].map((d) => (
+          <button
+            key={d}
+            style={{ ...styles.chip, ...(delai === d ? styles.chipActive : {}) }}
+            onClick={() => setDelai(d)}
+          >
+            {d}
+          </button>
+        ))}
+      </div>
+
+      <div style={styles.recapBox}>
+        <div style={styles.recapRow}>
+          <span>Montant tâche</span>
+          <span>{fmtFCFA(tache)}</span>
+        </div>
+        <div style={styles.recapRow}>
+          <span>Commission proposée</span>
+          <span>{fmtFCFA(commission)}</span>
+        </div>
+        <div style={styles.recapRowSmall}>
+          <span>— dont frais plateforme (14%)</span>
+          <span>{fmtFCFA(fraisPlateforme)}</span>
+        </div>
+        <div style={styles.recapRowSmall}>
+          <span>— versé à l'exécutant (86%)</span>
+          <span>{fmtFCFA(executantPayout)}</span>
+        </div>
+        <div style={styles.recapDivider} />
+        <div style={styles.recapRowTotal}>
+          <span>Total débité (bloqué en escrow)</span>
+          <span>{fmtFCFA(total)}</span>
+        </div>
+        <div style={styles.recapRowSmall}>
+          <span>Solde actuel (portefeuille demandeur)</span>
+          <span>{fmtFCFA(me.walletDemandeur)}</span>
+        </div>
+      </div>
+
+      {insufficientFunds && (
+        <div style={styles.warningBox}>
+          <AlertTriangle size={14} /> Solde insuffisant pour ce montant.
+        </div>
+      )}
+
+      <button style={styles.btnPrimary} disabled={!canPublish} onClick={handlePublish}>
+        <ShieldCheck size={16} style={{ marginRight: 6, verticalAlign: -2 }} />
+        Publier et bloquer les fonds
+      </button>
+    </div>
+  );
+}
+
+/* ============================= KYC SCREEN (upload corrigé) ============================= */
+function KycScreen({ me, onBack, onSubmit, onForceVerify }) {
+  const [docs, setDocs] = useState(me.kyc?.docs || {});
+  const [uploadError, setUploadError] = useState(null);
+  const status = me.kyc?.status || "none";
+
+  function handleFile(key, file) {
+    setUploadError(null);
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Le fichier doit être une image (JPG, PNG...).");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setUploadError("Image trop lourde (max 8 Mo). Essaie une photo plus légère.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => setUploadError("Impossible de lire ce fichier. Réessaie avec une autre photo.");
+    reader.onload = () => {
+      setDocs((d) => ({ ...d, [key]: { name: file.name, dataUrl: reader.result } }));
+    };
+    reader.readAsDataURL(file);
+  }
+
+  const requiredKeys = ["cni", "carteEtudiant", "selfie"];
+  const complete = requiredKeys.every((k) => docs[k]);
+
+  if (status === "verified") {
+    return (
+      <div style={styles.screenPad}>
+        <ScreenHeader title="Vérification d'identité" onBack={onBack} />
+        <div style={styles.kycVerifiedBox}>
+          <ShieldCheck size={32} color="#1F4D3A" />
+          <div style={styles.kycVerifiedTitle}>Identité vérifiée</div>
+          <div style={styles.kycVerifiedSub}>
+            Tu peux désormais accepter des commissions sur Comi-Étudiant.
+          </div>
+        </div>
+        <DocPreviewGrid docs={docs} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={styles.screenPad}>
+      <ScreenHeader title="Vérification d'identité (KYC)" onBack={onBack} />
+      <p style={styles.kycIntro}>
+        Pour la sécurité de tous, chaque exécutant doit fournir ces trois documents.
+        Ils sont stockés uniquement pour cette démo.
+      </p>
+
+      {status === "pending" && (
+        <div style={styles.kycPendingBox}>
+          <Clock size={16} color="#D9A53F" />
+          <span>Dossier envoyé. Validation simulée sous 24-48h.</span>
+        </div>
+      )}
+
+      {uploadError && (
+        <div style={styles.warningBox}>
+          <AlertTriangle size={14} /> {uploadError}
+        </div>
+      )}
+
+      <UploadRow
+        id="upload-cni"
+        label="Carte Nationale d'Identité (CNI)"
+        icon={FileText}
+        doc={docs.cni}
+        onFile={(f) => handleFile("cni", f)}
+      />
+      <UploadRow
+        id="upload-carte-etudiant"
+        label="Carte d'étudiant"
+        icon={FileText}
+        doc={docs.carteEtudiant}
+        onFile={(f) => handleFile("carteEtudiant", f)}
+      />
+      <UploadRow
+        id="upload-selfie"
+        label="Selfie de vérification"
+        icon={Camera}
+        doc={docs.selfie}
+        onFile={(f) => handleFile("selfie", f)}
+      />
+
+      <button
+        style={styles.btnPrimary}
+        disabled={!complete}
+        onClick={() => onSubmit(docs)}
+      >
+        Envoyer mon dossier KYC
+      </button>
+
+      {status === "pending" && (
+        <button style={styles.btnGhost} onClick={onForceVerify}>
+          <RefreshCw size={13} style={{ marginRight: 5, verticalAlign: -2 }} />
+          Simuler la validation admin (démo)
+        </button>
+      )}
+    </div>
+  );
+}
+
+function UploadRow({ id, label, icon: Icon, doc, onFile }) {
+  return (
+    <div style={styles.uploadRow}>
+      <div style={styles.uploadRowLeft}>
+        {doc ? (
+          <img src={doc.dataUrl} alt={label} style={styles.uploadThumb} />
+        ) : (
+          <div style={styles.uploadThumbPlaceholder}>
+            <Icon size={18} color="#8a8276" />
+          </div>
+        )}
+        <div>
+          <div style={styles.uploadLabel}>{label}</div>
+          <div style={styles.uploadStatus}>{doc ? "Fichier ajouté ✓" : "Aucun fichier"}</div>
+        </div>
+      </div>
+      <input
+        id={id}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={(e) => { onFile(e.target.files[0]); e.target.value = ""; }}
+      />
+      <label htmlFor={id} style={styles.uploadBtn}>
+        <Upload size={13} /> {doc ? "Changer" : "Ajouter"}
+      </label>
+    </div>
+  );
+}
+
+function DocPreviewGrid({ docs }) {
+  const entries = Object.entries(docs);
+  if (!entries.length) return null;
+  return (
+    <div style={styles.docPreviewGrid}>
+      {entries.map(([k, v]) => (
+        <img key={k} src={v.dataUrl} alt={k} style={styles.docPreviewImg} />
+      ))}
+    </div>
+  );
+}
+
+/* ============================= DETAIL SCREEN ============================= */
+function DetailScreen({ me, role, commission, users, chats, onSendChat, onBack, onUpdateCommission, updateUser, updateFavoris, showToast, onOpenProfile }) {
+  const isDemandeur = commission.demandeurId === me.id;
+  const isExecutant = commission.executantId === me.id;
+  const cat = CATEGORY_MAP[commission.category];
+  const demandeur = users[commission.demandeurId];
+  const executant = commission.executantId ? users[commission.executantId] : null;
+
+  const [showVideoCapture, setShowVideoCapture] = useState(false);
+  const [showSignature, setShowSignature] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [showCall, setShowCall] = useState(null);
+  const [showRating, setShowRating] = useState(false);
+
+  const chatActive = commission.status === "en_cours" || commission.status === "remise";
+  const thread = chats?.[commission.id] || [];
+  const unreadCount = thread.filter((m) => m.authorId !== me.id && !(m.readBy || []).includes(me.id)).length;
+
+  const isFavoriteAccepted = (demandeur?.favoris || []).some(
+    (f) => f.executantId === executant?.id && f.status === "accepted"
+  );
+  const isFavoritePending = (demandeur?.favoris || []).some(
+    (f) => f.executantId === executant?.id && f.status === "pending"
+  );
+
+  async function handleAccept() {
+    if (me.kyc?.status !== "verified") {
+      showToast("KYC requis avant d'accepter une commission.", "error");
+      return;
+    }
+    await onUpdateCommission({
+      executantId: me.id,
+      status: "en_cours",
+      timeline: [
+        ...commission.timeline,
+        { label: `Prise en charge par ${me.name.split(" ")[0]}`, ts: Date.now() },
+      ],
+    });
+    showToast("Commission acceptée. Les fonds restent bloqués en escrow.");
+  }
+
+  async function handleDeclineDirect() {
+    await onUpdateCommission({ directTo: null, directDeclinedBy: [...(commission.directDeclinedBy || []), me.id] });
+    showToast("Commission directe déclinée — ouverte à tous les exécutants.");
+  }
+
+  async function handleProofVideo(dataUrl) {
+    await onUpdateCommission({
+      proof: { ...commission.proof, videoDataUrl: dataUrl, videoAt: Date.now() },
+    });
+    setShowVideoCapture(false);
+    showToast("Vidéo de remise enregistrée.");
+  }
+
+  async function handleSignature(dataUrl) {
+    await onUpdateCommission({
+      proof: { ...commission.proof, signatureDataUrl: dataUrl, signedAt: Date.now() },
+      status: "remise",
+      timeline: [
+        ...commission.timeline,
+        { label: "Remise filmée + signature électronique", ts: Date.now() },
+      ],
+    });
+    setShowSignature(false);
+    showToast("Remise confirmée. En attente de validation du demandeur.");
+  }
+
+  async function handleValidate() {
+    setShowRating(true);
+  }
+
+  async function handleSubmitRating(criteres, commentaire) {
+    const exec = users[commission.executantId];
+    const noteCommission =
+      criteres.qualite * 0.35 + criteres.ponctualite * 0.25 +
+      criteres.communication * 0.20 + criteres.attitude * 0.15 + criteres.presentation * 0.05;
+
+    const prevScore = exec.scoreExecutant || { noteGlobale: 5, nbCommissions: 0, notesRecues: [] };
+    const nbCommissions = prevScore.nbCommissions + 1;
+    const noteGlobale = (prevScore.noteGlobale * prevScore.nbCommissions + noteCommission) / nbCommissions;
+    const details = {};
+    RATING_CRITERIA.forEach((c) => {
+      const prevDetail = prevScore.details?.[c.id] ?? 5;
+      details[c.id] = (prevDetail * prevScore.nbCommissions + criteres[c.id]) / nbCommissions;
+    });
+
+    // Paiement : 86% commission + remboursement intégral des frais de tâche avancés, crédités au portefeuille EXÉCUTANT
+    await updateUser(commission.executantId, {
+      walletExecutant: exec.walletExecutant + commission.executantPayout + commission.montantTache,
+      scoreExecutant: {
+        noteGlobale,
+        nbCommissions,
+        tauxCompletion: 100,
+        details,
+        notesRecues: [
+          ...(prevScore.notesRecues || []),
+          { commissionId: commission.id, criteres, commentaire, auteur: me.name, ts: Date.now() },
+        ],
+      },
+    });
+
+    const dem = users[commission.demandeurId];
+    await updateUser(commission.demandeurId, {
+      ratingDemandeur: bumpRating(dem.ratingDemandeur),
+    });
+
+    await onUpdateCommission({
+      status: "validee",
+      noteSoumise: { criteres, commentaire, noteCommission },
+      timeline: [
+        ...commission.timeline,
+        {
+          label: `Validée — ${fmtFCFA(commission.executantPayout)} (86%) + remboursement frais versés`,
+          ts: Date.now(),
+        },
+        { label: `Notée ${noteCommission.toFixed(1)}/5 par ${me.name.split(" ")[0]}`, ts: Date.now() },
+      ],
+    });
+    setShowRating(false);
+    showToast("Paiement libéré et note enregistrée ✅");
+  }
+
+  async function handleRefund() {
+    // Remboursement intégral sur le portefeuille DEMANDEUR (c'est de là que les fonds ont été débités)
+    await updateUser(commission.demandeurId, {
+      walletDemandeur: me.walletDemandeur + commission.totalDebited,
+    });
+    await onUpdateCommission({
+      status: "remboursee",
+      timeline: [...commission.timeline, { label: "Commission annulée — remboursement intégral", ts: Date.now() }],
+    });
+    showToast("Remboursement effectué.");
+  }
+
+  async function handleToggleFavorite() {
+    if (!executant) return;
+    const current = demandeur.favoris || [];
+    if (isFavoriteAccepted || isFavoritePending) {
+      const next = current.filter((f) => f.executantId !== executant.id);
+      await updateFavoris(demandeur.id, next);
+      showToast("Retiré de tes favoris.");
+      return;
+    }
+    if (current.length >= MAX_FAVORIS) {
+      showToast(`Maximum ${MAX_FAVORIS} favoris atteint.`, "error");
+      return;
+    }
+    const next = [...current, { executantId: executant.id, status: "accepted", since: Date.now(), nbCommEnsemble: 1 }];
+    await updateFavoris(demandeur.id, next);
+    showToast(`${executant.name.split(" ")[0]} ajouté à tes favoris !`);
+  }
+
+  return (
+    <div style={styles.screenPad}>
+      <ScreenHeader title={cat?.label || "Commission"} onBack={onBack} />
+
+      {commission.directTo === me.id && commission.status === "publiee" && (
+        <div style={styles.directBanner}>
+          <Heart size={15} fill="#B5542B" color="#B5542B" />
+          <span>Commission directe d'un client fidèle — réponds avant l'ouverture publique.</span>
+        </div>
+      )}
+
+      <div style={styles.detailHeaderCard}>
+        <div style={styles.detailDesc}>{commission.description}</div>
+        <div style={styles.detailMetaRow}>
+          <span style={{ ...styles.statusChip, background: STATUS_LABEL[commission.status]?.color }}>
+            {STATUS_LABEL[commission.status]?.label}
+          </span>
+          <span style={styles.ticketMeta}>
+            <Clock size={12} /> {commission.delai}
+          </span>
+        </div>
+      </div>
+
+      <div style={styles.amountsGrid}>
+        <AmountBox label="Montant tâche" value={fmtFCFA(commission.montantTache)} />
+        <AmountBox label="Commission" value={fmtFCFA(commission.montantCommission)} />
+        <AmountBox label="Part exécutant (86%)" value={fmtFCFA(commission.executantPayout)} highlight="green" />
+        <AmountBox label="Part plateforme (14%)" value={fmtFCFA(commission.fraisPlateforme)} highlight="ocre" />
+      </div>
+
+      <PeopleRow
+        demandeur={demandeur}
+        executant={executant}
+        onOpenExecutant={executant ? () => onOpenProfile(executant.id) : null}
+      />
+
+      {isDemandeur && executant && commission.status !== "publiee" && (
+        <button style={styles.favoriteToggle} onClick={handleToggleFavorite}>
+          <Heart size={15} fill={isFavoriteAccepted ? "#B5542B" : "none"} color="#B5542B" />
+          {isFavoriteAccepted ? "Retirer des favoris" : isFavoritePending ? "Favori en attente d'acceptation" : "Ajouter aux favoris"}
+        </button>
+      )}
+
+      {chatActive && (
+        <button style={styles.chatEntryBtn} onClick={() => setShowChat(true)}>
+          <div style={{ position: "relative" }}>
+            <MessageCircle size={18} color="#1F4D3A" />
+            {unreadCount > 0 && <span style={styles.chatUnreadDot} />}
+          </div>
+          <span style={styles.chatEntryText}>
+            {thread.length > 0 ? `Discussion (${thread.length} message${thread.length > 1 ? "s" : ""})` : "Ouvrir la discussion"}
+          </span>
+          <div style={styles.chatEntryCallBtns}>
+            <span
+              style={styles.chatEntryCallIcon}
+              onClick={(e) => { e.stopPropagation(); setShowCall("audio"); }}
+            >
+              <Phone size={14} />
+            </span>
+            <span
+              style={styles.chatEntryCallIcon}
+              onClick={(e) => { e.stopPropagation(); setShowCall("video"); }}
+            >
+              <Video size={14} />
+            </span>
+          </div>
+        </button>
+      )}
+
+      <Timeline events={commission.timeline} />
+
+      {commission.proof?.videoDataUrl && (
+        <ProofBlock label="Vidéo de remise" type="video" src={commission.proof.videoDataUrl} ts={commission.proof.videoAt} />
+      )}
+      {commission.proof?.signatureDataUrl && (
+        <ProofBlock label="Signature électronique" type="image" src={commission.proof.signatureDataUrl} ts={commission.proof.signedAt} />
+      )}
+      {commission.noteSoumise && (
+        <RatingSummaryBlock note={commission.noteSoumise} />
+      )}
+
+      <div style={styles.actionsZone}>
+        {role === "executant" && commission.status === "publiee" && !isDemandeur && (!commission.directTo || commission.directTo === me.id) && (
+          <button style={styles.btnPrimary} onClick={handleAccept}>
+            {commission.directTo === me.id ? "Accepter cette commission directe" : "Accepter cette commission"}
+          </button>
+        )}
+
+        {role === "executant" && commission.directTo === me.id && commission.status === "publiee" && (
+          <button style={styles.btnGhost} onClick={handleDeclineDirect}>
+            Décliner — ouvrir à tous
+          </button>
+        )}
+
+        {isExecutant && commission.status === "en_cours" && (
+          <button style={styles.btnPrimary} onClick={() => setShowVideoCapture(true)}>
+            <Video size={16} style={{ marginRight: 6, verticalAlign: -2 }} />
+            Filmer la remise
+          </button>
+        )}
+
+        {isExecutant && commission.status === "en_cours" && commission.proof?.videoDataUrl && !commission.proof?.signatureDataUrl && (
+          <button style={styles.btnPrimary} onClick={() => setShowSignature(true)}>
+            <PenTool size={16} style={{ marginRight: 6, verticalAlign: -2 }} />
+            Faire signer le demandeur
+          </button>
+        )}
+
+        {isDemandeur && commission.status === "remise" && (
+          <button style={styles.btnPrimary} onClick={handleValidate}>
+            <CheckCircle2 size={16} style={{ marginRight: 6, verticalAlign: -2 }} />
+            Valider la réception et noter
+          </button>
+        )}
+
+        {isDemandeur && (commission.status === "publiee" || commission.status === "en_cours") && (
+          <button style={styles.btnDanger} onClick={handleRefund}>
+            Annuler et me rembourser
+          </button>
+        )}
+      </div>
+
+      {showVideoCapture && (
+        <VideoCaptureModal onClose={() => setShowVideoCapture(false)} onCapture={handleProofVideo} />
+      )}
+      {showSignature && (
+        <SignatureModal onClose={() => setShowSignature(false)} onSign={handleSignature} />
+      )}
+      {showChat && (
+        <ChatModal
+          me={me}
+          thread={thread}
+          onClose={() => setShowChat(false)}
+          onSend={(message) => onSendChat(commission.id, message)}
+          onStartCall={(type) => { setShowChat(false); setShowCall(type); }}
+        />
+      )}
+      {showCall && (
+        <CallModal
+          type={showCall}
+          counterpart={isDemandeur ? executant : demandeur}
+          onClose={() => setShowCall(null)}
+        />
+      )}
+      {showRating && (
+        <RatingModal onClose={() => setShowRating(false)} onSubmit={handleSubmitRating} executantName={executant?.name} />
+      )}
+    </div>
+  );
+}
+
+function bumpRating(r) {
+  const count = (r?.count || 0) + 1;
+  const avg = ((r?.avg || 5) * (r?.count || 0) + 5) / count;
+  return { avg, count };
+}
+
+function AmountBox({ label, value, highlight }) {
+  return (
+    <div
+      style={{
+        ...styles.amountBox,
+        ...(highlight === "green" ? { background: "#1F4D3A", color: "#F2EDE4" } : {}),
+        ...(highlight === "ocre" ? { background: "#D9A53F", color: "#1A1814" } : {}),
+      }}
+    >
+      <div style={styles.amountBoxLabel}>{label}</div>
+      <div style={styles.amountBoxValue}>{value}</div>
+    </div>
+  );
+}
+
+function PeopleRow({ demandeur, executant, onOpenExecutant }) {
+  return (
+    <div style={styles.peopleRow}>
+      <PersonChip label="Demandeur" user={demandeur} />
+      <PersonChip label="Exécutant" user={executant} placeholder="En attente..." onClick={onOpenExecutant} />
+    </div>
+  );
+}
+function PersonChip({ label, user, placeholder, onClick }) {
+  const level = user?.scoreExecutant ? computeLevel(user.scoreExecutant.nbCommissions || 0, user.scoreExecutant.noteGlobale || 5) : null;
+  const Wrapper = onClick ? "button" : "div";
+  return (
+    <Wrapper style={{ ...styles.personChip, ...(onClick ? { cursor: "pointer" } : {}) }} onClick={onClick}>
+      <div style={styles.personAvatar}>{user ? user.name[0] : "?"}</div>
+      <div style={{ textAlign: "left" }}>
+        <div style={styles.personChipLabel}>{label}</div>
+        <div style={styles.personChipName}>{user ? user.name.split(" ")[0] : placeholder}</div>
+        {level && (
+          <div style={{ ...styles.personChipLevel, color: level.color }}>{level.label}</div>
+        )}
+      </div>
+    </Wrapper>
+  );
+}
+
+function Timeline({ events }) {
+  if (!events?.length) return null;
+  return (
+    <div style={styles.timelineWrap}>
+      {events.map((e, i) => (
+        <div key={i} style={styles.timelineRow}>
+          <div style={styles.timelineDot} />
+          <div style={{ flex: 1 }}>
+            <div style={styles.timelineLabel}>{e.label}</div>
+            <div style={styles.timelineTime}>{new Date(e.ts).toLocaleString("fr-FR")}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProofBlock({ label, type, src, ts }) {
+  return (
+    <div style={styles.proofBlock}>
+      <div style={styles.proofLabel}>
+        <ShieldCheck size={13} /> {label} — {new Date(ts).toLocaleString("fr-FR")}
+      </div>
+      {type === "video" ? (
+        <video src={src} controls style={styles.proofMedia} />
+      ) : (
+        <img src={src} alt={label} style={{ ...styles.proofMedia, background: "#fff" }} />
+      )}
+    </div>
+  );
+}
+
+function RatingSummaryBlock({ note }) {
+  return (
+    <div style={styles.ratingSummaryBlock}>
+      <div style={styles.proofLabel}>
+        <Star size={13} fill="#D9A53F" color="#D9A53F" /> Note donnée : {note.noteCommission.toFixed(1)}/5
+      </div>
+      <div style={styles.ratingSummaryGrid}>
+        {RATING_CRITERIA.map((c) => (
+          <div key={c.id} style={styles.ratingSummaryItem}>
+            <span>{c.label}</span>
+            <span style={styles.ratingSummaryValue}>{note.criteres[c.id]}/5</span>
+          </div>
+        ))}
+      </div>
+      {note.commentaire && <div style={styles.ratingSummaryComment}>"{note.commentaire}"</div>}
+    </div>
+  );
+}
+
+/* ============================= CHAT MODAL ============================= */
+function ChatModal({ me, thread, onClose, onSend, onStartCall }) {
+  const [text, setText] = useState("");
+  const fileInputRef = useRef(null);
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [thread.length]);
+
+  function send(extra = {}) {
+    if (!text.trim() && !extra.photoDataUrl && !extra.gps) return;
+    onSend({
+      id: uid("msg"),
+      authorId: me.id,
+      text: text.trim() || null,
+      ts: Date.now(),
+      readBy: [me.id],
+      ...extra,
+    });
+    setText("");
+  }
+
+  function handlePhoto(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => send({ photoDataUrl: reader.result });
+    reader.readAsDataURL(file);
+  }
+
+  function sharePosition() {
+    send({ gps: { lat: (3.848 + Math.random() * 0.02).toFixed(4), lng: (11.502 + Math.random() * 0.02).toFixed(4) } });
+  }
+
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.chatModalBox}>
+        <div style={styles.modalHeader}>
+          <span style={styles.modalTitle}>Discussion</span>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button style={styles.modalIconBtn} onClick={() => onStartCall("audio")} title="Appel audio">
+              <Phone size={15} />
+            </button>
+            <button style={styles.modalIconBtn} onClick={() => onStartCall("video")} title="Appel vidéo">
+              <Video size={15} />
+            </button>
+            <button style={styles.modalClose} onClick={onClose}>
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div ref={scrollRef} style={styles.chatThread}>
+          {thread.length === 0 && (
+            <div style={styles.chatEmptyHint}>
+              Coordonnez les détails : adresse exacte, produit précis, heure de passage...
+            </div>
+          )}
+          {thread.map((m) => (
+            <ChatBubble key={m.id} message={m} isMine={m.authorId === me.id} />
+          ))}
+        </div>
+
+        <div style={styles.chatQuickRow}>
+          <button style={styles.chatQuickBtn} onClick={sharePosition}>
+            <Navigation size={13} /> Ma position
+          </button>
+          <button style={styles.chatQuickBtn} onClick={() => fileInputRef.current?.click()}>
+            <ImageIcon size={13} /> Photo
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={(e) => { handlePhoto(e.target.files[0]); e.target.value = ""; }}
+          />
+        </div>
+
+        <div style={styles.chatInputRow}>
+          <input
+            style={styles.chatInput}
+            placeholder="Écrire un message..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+          />
+          <button style={styles.chatSendBtn} onClick={() => send()} disabled={!text.trim()}>
+            <Send size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChatBubble({ message, isMine }) {
+  return (
+    <div style={{ ...styles.chatBubbleRow, justifyContent: isMine ? "flex-end" : "flex-start" }}>
+      <div style={{ ...styles.chatBubble, ...(isMine ? styles.chatBubbleMine : styles.chatBubbleTheirs) }}>
+        {message.photoDataUrl && <img src={message.photoDataUrl} alt="photo" style={styles.chatBubblePhoto} />}
+        {message.gps && (
+          <div style={styles.chatGpsChip}>
+            <MapPin size={12} /> Position partagée ({message.gps.lat}, {message.gps.lng})
+          </div>
+        )}
+        {message.text && <div style={styles.chatBubbleText}>{message.text}</div>}
+        <div style={{ ...styles.chatBubbleTime, color: isMine ? "rgba(242,237,228,0.7)" : "#8a8276" }}>
+          {new Date(message.ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================= CALL MODAL ============================= */
+function CallModal({ type, counterpart, onClose }) {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [seconds, setSeconds] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: type === "video",
+          audio: true,
+        });
+        streamRef.current = stream;
+        if (videoRef.current && type === "video") {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => {});
+        }
+      } catch (e) {
+        setError("Micro/caméra non disponibles ou refusés. L'appel reste simulé.");
+      }
+    })();
+    const interval = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => {
+      clearInterval(interval);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+    };
+  }, [type]);
+
+  function toggleMute() {
+    setMuted((m) => {
+      streamRef.current?.getAudioTracks().forEach((t) => (t.enabled = m));
+      return !m;
+    });
+  }
+
+  const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const ss = String(seconds % 60).padStart(2, "0");
+
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.callModalBox}>
+        {type === "video" && !error ? (
+          <video ref={videoRef} muted playsInline style={styles.callVideoSelf} />
+        ) : (
+          <div style={styles.callAvatarBig}>{counterpart ? counterpart.name[0] : "?"}</div>
+        )}
+        <div style={styles.callName}>{counterpart ? counterpart.name : "Correspondant"}</div>
+        <div style={styles.callTimer}>{mm}:{ss}</div>
+        {error && <div style={styles.callErrorNote}>{error}</div>}
+        <div style={styles.callControls}>
+          <button style={styles.callControlBtn} onClick={toggleMute}>
+            <Mic size={18} color={muted ? "#B5542B" : "#1A1814"} />
+          </button>
+          <button style={styles.callEndBtn} onClick={onClose}>
+            <PhoneOff size={20} color="#fff" />
+          </button>
+        </div>
+        <p style={styles.modalNote}>
+          Appel {type === "video" ? "vidéo" : "audio"} relayé via les serveurs Comi-Étudiant — numéros jamais partagés.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ============================= RATING MODAL ============================= */
+function RatingModal({ onClose, onSubmit, executantName }) {
+  const [criteres, setCriteres] = useState(
+    Object.fromEntries(RATING_CRITERIA.map((c) => [c.id, 5]))
+  );
+  const [commentaire, setCommentaire] = useState("");
+
+  const noteCommission =
+    criteres.qualite * 0.35 + criteres.ponctualite * 0.25 +
+    criteres.communication * 0.20 + criteres.attitude * 0.15 + criteres.presentation * 0.05;
+
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.modalBox}>
+        <div style={styles.modalHeader}>
+          <span style={styles.modalTitle}>Noter {executantName?.split(" ")[0] || "l'exécutant"}</span>
+          <button style={styles.modalClose} onClick={onClose}>
+            <X size={16} />
+          </button>
+        </div>
+
+        {RATING_CRITERIA.map((c) => (
+          <div key={c.id} style={styles.ratingRow}>
+            <div style={styles.ratingRowLabel}>{c.label}</div>
+            <StarPicker value={criteres[c.id]} onChange={(v) => setCriteres((s) => ({ ...s, [c.id]: v }))} />
+          </div>
+        ))}
+
+        <textarea
+          style={styles.textarea}
+          placeholder="Un commentaire (optionnel)"
+          value={commentaire}
+          onChange={(e) => setCommentaire(e.target.value)}
+          rows={2}
+        />
+
+        <div style={styles.ratingTotalRow}>
+          <span>Note globale de cette commission</span>
+          <span style={styles.ratingTotalValue}>{noteCommission.toFixed(1)}/5</span>
+        </div>
+
+        <button style={styles.btnPrimary} onClick={() => onSubmit(criteres, commentaire.trim())}>
+          <Check size={15} style={{ marginRight: 6, verticalAlign: -2 }} />
+          Confirmer la note et libérer le paiement
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StarPicker({ value, onChange }) {
+  return (
+    <div style={styles.starPicker}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button key={n} style={styles.starPickerBtn} onClick={() => onChange(n)}>
+          <Star size={18} fill={n <= value ? "#D9A53F" : "none"} color="#D9A53F" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ============================= VIDEO CAPTURE MODAL (webcam réelle) ============================= */
+function VideoCaptureModal({ onClose, onCapture }) {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const recorderRef = useRef(null);
+  const chunksRef = useRef([]);
+  const [recording, setRecording] = useState(false);
+  const [recordedUrl, setRecordedUrl] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => {});
+        }
+      } catch (e) {
+        setError("Caméra non disponible ou accès refusé. Tu peux fermer et continuer en démo.");
+      }
+    })();
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  function startRecording() {
+    if (!streamRef.current) return;
+    chunksRef.current = [];
+    const recorder = new MediaRecorder(streamRef.current);
+    recorder.ondataavailable = (e) => chunksRef.current.push(e.data);
+    recorder.onstop = () => {
+      const blob = new Blob(chunksRef.current, { type: "video/webm" });
+      const reader = new FileReader();
+      reader.onload = () => setRecordedUrl(reader.result);
+      reader.readAsDataURL(blob);
+    };
+    recorder.start();
+    recorderRef.current = recorder;
+    setRecording(true);
+    setTimeout(() => {
+      if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+      setRecording(false);
+    }, 8000);
+  }
+
+  function stopRecording() {
+    recorderRef.current?.stop();
+    setRecording(false);
+  }
+
+  return (
+    <ModalShell onClose={onClose} title="Vidéo de remise">
+      {error ? (
+        <div style={styles.warningBox}>{error}</div>
+      ) : (
+        <>
+          {!recordedUrl ? (
+            <video ref={videoRef} muted playsInline style={styles.captureVideo} />
+          ) : (
+            <video src={recordedUrl} controls style={styles.captureVideo} />
+          )}
+          <div style={styles.captureControls}>
+            {!recordedUrl && !recording && (
+              <button style={styles.btnPrimary} onClick={startRecording}>
+                <Video size={15} style={{ marginRight: 6, verticalAlign: -2 }} /> Démarrer (8s max)
+              </button>
+            )}
+            {recording && (
+              <button style={styles.btnDanger} onClick={stopRecording}>
+                <Square size={14} style={{ marginRight: 6, verticalAlign: -2 }} /> Arrêter
+              </button>
+            )}
+            {recordedUrl && (
+              <>
+                <button style={styles.btnPrimary} onClick={() => onCapture(recordedUrl)}>
+                  <Check size={15} style={{ marginRight: 6, verticalAlign: -2 }} /> Utiliser cette vidéo
+                </button>
+                <button style={styles.btnGhost} onClick={() => setRecordedUrl(null)}>
+                  Refaire
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
+      <p style={styles.modalNote}>Géolocalisation et horodatage seraient attachés automatiquement en production.</p>
+    </ModalShell>
+  );
+}
+
+/* ============================= SIGNATURE MODAL (canvas réel) ============================= */
+function SignatureModal({ onClose, onSign }) {
+  const canvasRef = useRef(null);
+  const drawingRef = useRef(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "#1A1814";
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+  }, []);
+
+  function getPos(e, canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  function start(e) {
+    drawingRef.current = true;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const { x, y } = getPos(e, canvas);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setHasDrawn(true);
+  }
+  function move(e) {
+    if (!drawingRef.current) return;
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const { x, y } = getPos(e, canvas);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  }
+  function end() {
+    drawingRef.current = false;
+  }
+  function clear() {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    setHasDrawn(false);
+  }
+
+  return (
+    <ModalShell onClose={onClose} title="Signature électronique du demandeur">
+      <p style={styles.modalNote}>Le demandeur signe ici pour confirmer la bonne réception.</p>
+      <canvas
+        ref={canvasRef}
+        width={300}
+        height={160}
+        style={styles.signatureCanvas}
+        onMouseDown={start}
+        onMouseMove={move}
+        onMouseUp={end}
+        onMouseLeave={end}
+        onTouchStart={start}
+        onTouchMove={move}
+        onTouchEnd={end}
+      />
+      <div style={styles.captureControls}>
+        <button
+          style={styles.btnPrimary}
+          disabled={!hasDrawn}
+          onClick={() => onSign(canvasRef.current.toDataURL())}
+        >
+          <Check size={15} style={{ marginRight: 6, verticalAlign: -2 }} /> Confirmer la signature
+        </button>
+        <button style={styles.btnGhost} onClick={clear}>
+          Effacer
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
+function ModalShell({ title, onClose, children }) {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.modalBox}>
+        <div style={styles.modalHeader}>
+          <span style={styles.modalTitle}>{title}</span>
+          <button style={styles.modalClose} onClick={onClose}>
+            <X size={16} />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ============================= FAVORIS SCREEN ============================= */
+function FavorisScreen({ me, users, commissions, onBack, updateUser, persistCommissions, showToast, onOpenProfile, onOpenCommission }) {
+  const favoris = me.favoris || [];
+  const accepted = favoris.filter((f) => f.status === "accepted");
+  const pending = favoris.filter((f) => f.status === "pending");
+  const [composeFor, setComposeFor] = useState(null);
+
+  async function sendDirectCommission(executantId, payload) {
+    const c = {
+      id: uid("comm"),
+      demandeurId: me.id,
+      executantId: null,
+      directTo: executantId,
+      directSentAt: Date.now(),
+      category: payload.category,
+      description: payload.description,
+      montantTache: payload.montantTache,
+      montantCommission: payload.montantCommission,
+      fraisPlateforme: Math.round(payload.montantCommission * COMMISSION_RATE),
+      executantPayout: payload.montantCommission - Math.round(payload.montantCommission * COMMISSION_RATE),
+      totalDebited: payload.montantTache + payload.montantCommission,
+      delai: payload.delai,
+      status: "publiee",
+      createdAt: Date.now(),
+      timeline: [{ label: "Commission directe envoyée à un favori", ts: Date.now() }],
+      proof: {},
+    };
+    if (c.totalDebited > me.walletDemandeur) {
+      showToast("Solde insuffisant pour cette commission.", "error");
+      return;
+    }
+    const next = [c, ...commissions];
+    await persistCommissions(next);
+    await updateUser(me.id, { walletDemandeur: me.walletDemandeur - c.totalDebited });
+    showToast(`Commission directe envoyée. Priorité 10 min avant ouverture publique.`);
+  }
+
+  async function removeFavorite(executantId) {
+    const next = favoris.filter((f) => f.executantId !== executantId);
+    await updateUser(me.id, { favoris: next });
+    showToast("Favori retiré.");
+  }
+
+  return (
+    <div style={styles.feedPad}>
+      <SectionHeading title="Mes exécutants favoris" subtitle={`${accepted.length} de confiance · ${pending.length} en attente`} />
+
+      {accepted.length === 0 && pending.length === 0 && (
+        <EmptyState
+          icon={Heart}
+          title="Aucun favori encore"
+          text="Après une commission réussie, tu peux ajouter l'exécutant à tes favoris depuis le détail de la commission."
+        />
+      )}
+
+      {accepted.map((f) => {
+        const exec = users[f.executantId];
+        if (!exec) return null;
+        const level = computeLevel(exec.scoreExecutant?.nbCommissions || 0, exec.scoreExecutant?.noteGlobale || 5);
+        return (
+          <div key={f.executantId} style={styles.favoriCard}>
+            <button style={styles.favoriCardHeader} onClick={() => onOpenProfile(exec.id)}>
+              <div style={styles.personAvatar}>{exec.name[0]}</div>
+              <div style={{ flex: 1, textAlign: "left" }}>
+                <div style={styles.favoriCardName}>{exec.name}</div>
+                <div style={styles.favoriCardMeta}>
+                  <Star size={11} fill="#D9A53F" color="#D9A53F" /> {Number(exec.scoreExecutant?.noteGlobale || 5).toFixed(1)}
+                  {" · "}
+                  <span style={{ color: level.color, fontWeight: 700 }}>{level.label}</span>
+                </div>
+              </div>
+              <ChevronRight size={16} color="#8a8276" />
+            </button>
+            <div style={styles.favoriCardFooter}>
+              <button style={styles.favoriSendBtn} onClick={() => setComposeFor(exec)}>
+                Envoyer une commission
+              </button>
+              <button style={styles.favoriRemoveBtn} onClick={() => removeFavorite(exec.id)}>
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        );
+      })}
+
+      {pending.length > 0 && (
+        <>
+          <SectionHeading title="En attente d'acceptation" subtitle="" />
+          {pending.map((f) => {
+            const exec = users[f.executantId];
+            if (!exec) return null;
+            return (
+              <div key={f.executantId} style={styles.favoriCard}>
+                <div style={styles.favoriCardHeader}>
+                  <div style={styles.personAvatar}>{exec.name[0]}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={styles.favoriCardName}>{exec.name}</div>
+                    <div style={styles.favoriCardMeta}>En attente de réponse</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </>
+      )}
+
+      {composeFor && (
+        <DirectCommissionModal
+          executant={composeFor}
+          onClose={() => setComposeFor(null)}
+          onSend={(payload) => { sendDirectCommission(composeFor.id, payload); setComposeFor(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function DirectCommissionModal({ executant, onClose, onSend }) {
+  const [category, setCategory] = useState(CATEGORIES[0].id);
+  const [description, setDescription] = useState("");
+  const [montantTache, setMontantTache] = useState("");
+  const [montantCommission, setMontantCommission] = useState("");
+
+  const tache = parseInt(montantTache || "0", 10) || 0;
+  const commission = parseInt(montantCommission || "0", 10) || 0;
+  const canSend = description.trim().length >= 5 && commission > 0;
+
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.modalBox}>
+        <div style={styles.modalHeader}>
+          <span style={styles.modalTitle}>Commission directe pour {executant.name.split(" ")[0]}</span>
+          <button style={styles.modalClose} onClick={onClose}>
+            <X size={16} />
+          </button>
+        </div>
+        <Label>Catégorie</Label>
+        <div style={styles.chipRow}>
+          {CATEGORIES.map((c) => (
+            <button
+              key={c.id}
+              style={{ ...styles.chip, ...(category === c.id ? styles.chipActive : {}) }}
+              onClick={() => setCategory(c.id)}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <Label>Description</Label>
+        <textarea
+          style={styles.textarea}
+          rows={2}
+          placeholder="Comme d'habitude au marché Mokolo..."
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+        <Label>Montant tâche (FCFA)</Label>
+        <input style={styles.input} inputMode="numeric" value={montantTache} onChange={(e) => setMontantTache(e.target.value.replace(/\D/g, ""))} />
+        <Label>Commission (FCFA)</Label>
+        <input style={styles.input} inputMode="numeric" value={montantCommission} onChange={(e) => setMontantCommission(e.target.value.replace(/\D/g, ""))} />
+        <p style={styles.modalNote}>
+          {executant.name.split(" ")[0]} aura 10 minutes pour accepter avant que la commission ne s'ouvre à tous.
+        </p>
+        <button
+          style={styles.btnPrimary}
+          disabled={!canSend}
+          onClick={() => onSend({ category, description: description.trim(), montantTache: tache, montantCommission: commission, delai: "Flexible" })}
+        >
+          Envoyer la commission directe
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================= PROFIL PUBLIC EXÉCUTANT ============================= */
+function ExecutantProfileScreen({ executant, me, commissions, onBack, updateUser, showToast }) {
+  const score = executant.scoreExecutant || { noteGlobale: 5, nbCommissions: 0, details: {}, notesRecues: [] };
+  const level = computeLevel(score.nbCommissions, score.noteGlobale);
+  const isMe = executant.id === me.id;
+  const completed = commissions.filter((c) => c.executantId === executant.id && c.status === "validee");
+  const specialites = {};
+  completed.forEach((c) => { specialites[c.category] = (specialites[c.category] || 0) + 1; });
+
+  const isFavoriteAccepted = !isMe && (me.favoris || []).some((f) => f.executantId === executant.id && f.status === "accepted");
+
+  async function toggleFavorite() {
+    const current = me.favoris || [];
+    if (isFavoriteAccepted) {
+      await updateUser(me.id, { favoris: current.filter((f) => f.executantId !== executant.id) });
+      showToast("Retiré de tes favoris.");
+    } else {
+      if (current.length >= MAX_FAVORIS) {
+        showToast(`Maximum ${MAX_FAVORIS} favoris atteint.`, "error");
+        return;
+      }
+      await updateUser(me.id, { favoris: [...current, { executantId: executant.id, status: "accepted", since: Date.now() }] });
+      showToast(`${executant.name.split(" ")[0]} ajouté à tes favoris !`);
+    }
+  }
+
+  return (
+    <div style={styles.screenPad}>
+      <ScreenHeader title="Profil exécutant" onBack={onBack} />
+
+      <div style={styles.profileHero}>
+        <div style={styles.profileAvatarBig}>{executant.name[0]}</div>
+        <div style={styles.profileName}>{executant.name}</div>
+        <div style={{ ...styles.profileLevelBadge, background: level.color }}>
+          <Award size={13} /> NIVEAU {level.label.toUpperCase()}
+        </div>
+        {executant.kyc?.status === "verified" && (
+          <div style={styles.profileVerified}>
+            <ShieldCheck size={13} /> Identité vérifiée (KYC)
+          </div>
+        )}
+      </div>
+
+      <div style={styles.profileNoteHero}>
+        <div style={styles.profileNoteValue}>{Number(score.noteGlobale).toFixed(1)} / 5</div>
+        <div style={styles.profileNoteSub}>{score.nbCommissions} commission(s) réalisée(s)</div>
+        <div style={styles.profileProgressBar}>
+          <div style={{ ...styles.profileProgressFill, width: `${Math.min(100, (score.noteGlobale / 5) * 100)}%` }} />
+        </div>
+      </div>
+
+      <SectionHeading title="Détail des notes" subtitle="" />
+      <div style={styles.detailNotesBox}>
+        {RATING_CRITERIA.map((c) => (
+          <div key={c.id} style={styles.detailNoteRow}>
+            <span style={styles.detailNoteLabel}>{c.label}</span>
+            <div style={styles.detailNoteStars}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <Star key={n} size={13} fill={n <= Math.round(score.details?.[c.id] || 5) ? "#D9A53F" : "none"} color="#D9A53F" />
+              ))}
+            </div>
+            <span style={styles.detailNoteValue}>{Number(score.details?.[c.id] || 5).toFixed(1)}</span>
+          </div>
+        ))}
+      </div>
+
+      {Object.keys(specialites).length > 0 && (
+        <>
+          <SectionHeading title="Spécialités" subtitle="" />
+          <div style={styles.specialiteRow}>
+            {Object.entries(specialites).map(([catId, count]) => (
+              <span key={catId} style={styles.specialiteChip}>
+                {CATEGORY_MAP[catId]?.label || catId} ({count})
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+
+      {score.notesRecues?.length > 0 && (
+        <>
+          <SectionHeading title="Derniers avis" subtitle="" />
+          {score.notesRecues.slice(-3).reverse().map((n, i) => (
+            <div key={i} style={styles.avisCard}>
+              <div style={styles.avisStars}>
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Star key={s} size={12} fill={s <= Math.round(n.criteres.qualite) ? "#D9A53F" : "none"} color="#D9A53F" />
+                ))}
+                <span style={styles.avisAuthor}>— {n.auteur?.split(" ")[0]}</span>
+              </div>
+              {n.commentaire && <div style={styles.avisText}>{n.commentaire}</div>}
+            </div>
+          ))}
+        </>
+      )}
+
+      {!isMe && (
+        <button style={{ ...styles.btnPrimary, marginTop: 18 }} onClick={toggleFavorite}>
+          <Heart size={15} style={{ marginRight: 6, verticalAlign: -2 }} fill={isFavoriteAccepted ? "#F2EDE4" : "none"} />
+          {isFavoriteAccepted ? "Retirer des favoris" : "Ajouter aux favoris"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ============================= HISTORY ============================= */
+function HistoryScreen({ me, commissions, onOpen }) {
+  const sorted = [...commissions].sort((a, b) => b.createdAt - a.createdAt);
+  return (
+    <div style={styles.feedPad}>
+      <SectionHeading title="Historique des transactions" subtitle={`${sorted.length} commission(s)`} />
+      {sorted.length === 0 && (
+        <EmptyState icon={History} title="Rien pour l'instant" text="Tes commissions apparaîtront ici." />
+      )}
+      {sorted.map((c) => (
+        <CommissionTicket
+          key={c.id}
+          commission={c}
+          viewerRole={c.demandeurId === me.id ? "demandeur" : "executant"}
+          onClick={() => onOpen(c)}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ============================= ADMIN DASHBOARD ============================= */
+function AdminDashboard({ users, commissions, onLogout }) {
+  const [tab, setTab] = useState("overview"); // overview | users | transactions
+
+  const usersList = Object.values(users);
+  const validated = commissions.filter((c) => c.status === "validee");
+  const totalVolume = validated.reduce((sum, c) => sum + c.totalDebited, 0);
+  const totalPlatformRevenue = validated.reduce((sum, c) => sum + c.fraisPlateforme, 0);
+  const totalExecutantPayout = validated.reduce((sum, c) => sum + c.executantPayout, 0);
+  const totalEscrowLocked = commissions
+    .filter((c) => c.status === "publiee" || c.status === "en_cours" || c.status === "remise")
+    .reduce((sum, c) => sum + c.totalDebited, 0);
+  const kycVerifiedCount = usersList.filter((u) => u.kyc?.status === "verified").length;
+  const kycPendingCount = usersList.filter((u) => u.kyc?.status === "pending").length;
+
+  const statusCounts = {};
+  commissions.forEach((c) => { statusCounts[c.status] = (statusCounts[c.status] || 0) + 1; });
+
+  return (
+    <div style={styles.adminWrap}>
+      <div style={styles.adminTopBar}>
+        <div style={styles.adminTopBarLeft}>
+          <div style={styles.miniStamp}>CE</div>
+          <div>
+            <div style={styles.adminTitle}>Tableau de bord</div>
+            <div style={styles.adminSubtitle}>Comi-Étudiant — Administration</div>
+          </div>
+        </div>
+        <button style={styles.adminLogoutBtn} onClick={onLogout}>
+          <LogOut size={14} /> Quitter
+        </button>
+      </div>
+
+      <div style={styles.adminTabs}>
+        <button style={{ ...styles.adminTabBtn, ...(tab === "overview" ? styles.adminTabBtnActive : {}) }} onClick={() => setTab("overview")}>
+          <LayoutDashboard size={14} /> Vue d'ensemble
+        </button>
+        <button style={{ ...styles.adminTabBtn, ...(tab === "users" ? styles.adminTabBtnActive : {}) }} onClick={() => setTab("users")}>
+          <Users size={14} /> Utilisateurs ({usersList.length})
+        </button>
+        <button style={{ ...styles.adminTabBtn, ...(tab === "transactions" ? styles.adminTabBtnActive : {}) }} onClick={() => setTab("transactions")}>
+          <History size={14} /> Transactions ({commissions.length})
+        </button>
+      </div>
+
+      <div style={styles.adminContent}>
+        {tab === "overview" && (
+          <>
+            <div style={styles.adminStatGrid}>
+              <AdminStatCard
+                icon={DollarSign}
+                label="Revenus plateforme générés (14%)"
+                value={fmtFCFA(totalPlatformRevenue)}
+                color="#D9A53F"
+              />
+              <AdminStatCard
+                icon={TrendingUp}
+                label="Volume total transigé"
+                value={fmtFCFA(totalVolume)}
+                color="#1F4D3A"
+              />
+              <AdminStatCard
+                icon={Wallet}
+                label="Versé aux exécutants (86%)"
+                value={fmtFCFA(totalExecutantPayout)}
+                color="#B5542B"
+              />
+              <AdminStatCard
+                icon={ShieldCheck}
+                label="Fonds actuellement en escrow"
+                value={fmtFCFA(totalEscrowLocked)}
+                color="#3a6ea5"
+              />
+            </div>
+
+            <div style={styles.adminStatGrid}>
+              <AdminStatCard icon={Users} label="Comptes créés" value={usersList.length} color="#1A1814" small />
+              <AdminStatCard icon={CheckCircle2} label="Commissions validées" value={validated.length} color="#1A1814" small />
+              <AdminStatCard icon={ShieldCheck} label="KYC vérifiés" value={kycVerifiedCount} color="#1A1814" small />
+              <AdminStatCard icon={Clock} label="KYC en attente" value={kycPendingCount} color="#1A1814" small />
+            </div>
+
+            <SectionHeading title="Répartition des commissions par statut" subtitle="" />
+            <div style={styles.adminStatusBars}>
+              {Object.entries(STATUS_LABEL).map(([key, info]) => {
+                const count = statusCounts[key] || 0;
+                const pct = commissions.length ? (count / commissions.length) * 100 : 0;
+                return (
+                  <div key={key} style={styles.adminStatusBarRow}>
+                    <div style={styles.adminStatusBarLabel}>{info.label}</div>
+                    <div style={styles.adminStatusBarTrack}>
+                      <div style={{ ...styles.adminStatusBarFill, width: `${pct}%`, background: info.color }} />
+                    </div>
+                    <div style={styles.adminStatusBarCount}>{count}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {tab === "users" && (
+          <div style={styles.adminTableWrap}>
+            <table style={styles.adminTable}>
+              <thead>
+                <tr>
+                  <th style={styles.adminTh}>Nom</th>
+                  <th style={styles.adminTh}>Téléphone</th>
+                  <th style={styles.adminTh}>Wallet demandeur</th>
+                  <th style={styles.adminTh}>Wallet exécutant</th>
+                  <th style={styles.adminTh}>KYC</th>
+                  <th style={styles.adminTh}>Note exéc.</th>
+                  <th style={styles.adminTh}>Inscrit le</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usersList
+                  .sort((a, b) => b.createdAt - a.createdAt)
+                  .map((u) => (
+                    <tr key={u.id}>
+                      <td style={styles.adminTd}>{u.name}</td>
+                      <td style={styles.adminTdMono}>{u.phone}</td>
+                      <td style={styles.adminTdMono}>{fmtFCFA(u.walletDemandeur)}</td>
+                      <td style={styles.adminTdMono}>{fmtFCFA(u.walletExecutant)}</td>
+                      <td style={styles.adminTd}>
+                        <span style={{
+                          ...styles.adminKycBadge,
+                          background: u.kyc?.status === "verified" ? "#1F4D3A" : u.kyc?.status === "pending" ? "#D9A53F" : "#8a8276",
+                        }}>
+                          {u.kyc?.status === "verified" ? "Vérifié" : u.kyc?.status === "pending" ? "En attente" : "Non fait"}
+                        </span>
+                      </td>
+                      <td style={styles.adminTdMono}>{Number(u.scoreExecutant?.noteGlobale || 5).toFixed(1)}/5</td>
+                      <td style={styles.adminTdMuted}>{new Date(u.createdAt).toLocaleDateString("fr-FR")}</td>
+                    </tr>
+                  ))}
+                {usersList.length === 0 && (
+                  <tr><td style={styles.adminTdMuted} colSpan={7}>Aucun utilisateur encore.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {tab === "transactions" && (
+          <div style={styles.adminTableWrap}>
+            <table style={styles.adminTable}>
+              <thead>
+                <tr>
+                  <th style={styles.adminTh}>Description</th>
+                  <th style={styles.adminTh}>Demandeur</th>
+                  <th style={styles.adminTh}>Exécutant</th>
+                  <th style={styles.adminTh}>Montant total</th>
+                  <th style={styles.adminTh}>Frais plateforme</th>
+                  <th style={styles.adminTh}>Statut</th>
+                  <th style={styles.adminTh}>Créée le</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...commissions]
+                  .sort((a, b) => b.createdAt - a.createdAt)
+                  .map((c) => (
+                    <tr key={c.id}>
+                      <td style={styles.adminTd}>{c.description.slice(0, 40)}{c.description.length > 40 ? "…" : ""}</td>
+                      <td style={styles.adminTd}>{users[c.demandeurId]?.name || "—"}</td>
+                      <td style={styles.adminTd}>{c.executantId ? (users[c.executantId]?.name || "—") : "—"}</td>
+                      <td style={styles.adminTdMono}>{fmtFCFA(c.totalDebited)}</td>
+                      <td style={styles.adminTdMono}>{fmtFCFA(c.fraisPlateforme)}</td>
+                      <td style={styles.adminTd}>
+                        <span style={{ ...styles.adminKycBadge, background: STATUS_LABEL[c.status]?.color }}>
+                          {STATUS_LABEL[c.status]?.label}
+                        </span>
+                      </td>
+                      <td style={styles.adminTdMuted}>{new Date(c.createdAt).toLocaleDateString("fr-FR")}</td>
+                    </tr>
+                  ))}
+                {commissions.length === 0 && (
+                  <tr><td style={styles.adminTdMuted} colSpan={7}>Aucune transaction encore.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminStatCard({ icon: Icon, label, value, color, small }) {
+  return (
+    <div style={{ ...styles.adminStatCard, ...(small ? styles.adminStatCardSmall : {}) }}>
+      <div style={{ ...styles.adminStatIconWrap, background: color }}>
+        <Icon size={small ? 14 : 18} color="#F2EDE4" />
+      </div>
+      <div>
+        <div style={styles.adminStatValue}>{value}</div>
+        <div style={styles.adminStatLabel}>{label}</div>
+      </div>
+    </div>
+  );
+}
+
+
+function SectionHeading({ title, subtitle }) {
+  return (
+    <div style={styles.sectionHeading}>
+      <div style={styles.sectionTitle}>{title}</div>
+      {subtitle && <div style={styles.sectionSubtitle}>{subtitle}</div>}
+    </div>
+  );
+}
+function Label({ children }) {
+  return <label style={styles.label}>{children}</label>;
+}
+function ScreenHeader({ title, onBack }) {
+  return (
+    <div style={styles.screenHeader}>
+      <button style={styles.backBtn} onClick={onBack}>
+        <ArrowLeft size={18} />
+      </button>
+      <span style={styles.screenHeaderTitle}>{title}</span>
+    </div>
+  );
+}
+function EmptyState({ icon: Icon, title, text }) {
+  return (
+    <div style={styles.emptyState}>
+      <Icon size={26} color="#8a8276" />
+      <div style={styles.emptyTitle}>{title}</div>
+      <div style={styles.emptyText}>{text}</div>
+    </div>
+  );
+}
+
+/* ============================= STYLES ============================= */
+const FONT_DISPLAY = "'Fraunces', Georgia, serif";
+const FONT_BODY = "'Inter', -apple-system, sans-serif";
+
+const styles = {
+  appRoot: {
+    minHeight: "100vh",
+    background: "#1A1814",
+    display: "flex",
+    justifyContent: "center",
+    fontFamily: FONT_BODY,
+  },
+  phoneFrame: {
+    width: "100%",
+    maxWidth: 430,
+    minHeight: "100vh",
+    background: "#F2EDE4",
+    position: "relative",
+    display: "flex",
+    flexDirection: "column",
+  },
+  wideFrame: { maxWidth: "100%" },
+  loadingScreen: {
+    minHeight: "100vh",
+    background: "#1A1814",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingMark: {
+    width: 56, height: 56, borderRadius: 14,
+    background: "#B5542B", color: "#F2EDE4",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 22,
+  },
+  connErrorWrap: {
+    flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+    padding: 30, textAlign: "center", gap: 10,
+  },
+  connErrorTitle: { fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 17, color: "#1A1814" },
+  connErrorText: { fontSize: 12.5, color: "#6b6457", lineHeight: 1.5 },
+
+  /* AUTH */
+  authWrap: { flex: 1, display: "flex", flexDirection: "column" },
+  authHero: {
+    background: "#1F4D3A",
+    color: "#F2EDE4",
+    padding: "56px 28px 40px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    textAlign: "center",
+  },
+  stamp: {
+    width: 64, height: 64, borderRadius: "50%",
+    border: "3px solid #D9A53F", color: "#D9A53F",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 22, marginBottom: 16,
+    letterSpacing: 1,
+  },
+  authTitle: { fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 32, margin: "0 0 6px" },
+  authSlogan: { fontSize: 14, opacity: 0.85, margin: 0, fontStyle: "italic" },
+  authCard: { padding: 28, flex: 1, display: "flex", flexDirection: "column" },
+  authNote: { fontSize: 12, color: "#8a8276", marginTop: 16, lineHeight: 1.5 },
+  adminLinkBtn: {
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+    background: "none", border: "none", color: "#A89E8E", fontSize: 11.5, fontWeight: 600,
+    marginTop: 22, padding: "8px 0",
+  },
+  pwdRow: { display: "flex", gap: 8, alignItems: "center" },
+  pwdEyeBtn: {
+    width: 42, height: 44, borderRadius: 10, border: "1.5px solid #E0D8C8", background: "#FFFDF9",
+    display: "flex", alignItems: "center", justifyContent: "center", color: "#5c5648", flexShrink: 0,
+  },
+
+  label: { fontSize: 12.5, fontWeight: 600, color: "#5c5648", marginBottom: 6, display: "block", textTransform: "uppercase", letterSpacing: 0.4 },
+  input: {
+    width: "100%", padding: "13px 14px", borderRadius: 10,
+    border: "1.5px solid #E0D8C8", background: "#FFFDF9",
+    fontSize: 15.5, color: "#1A1814", marginBottom: 16,
+  },
+  textarea: {
+    width: "100%", padding: "13px 14px", borderRadius: 10,
+    border: "1.5px solid #E0D8C8", background: "#FFFDF9",
+    fontSize: 15, color: "#1A1814", marginBottom: 14, resize: "vertical",
+    fontFamily: FONT_BODY,
+  },
+
+  btnPrimary: {
+    width: "100%", padding: "14px 16px", borderRadius: 11,
+    border: "none", background: "#B5542B", color: "#F2EDE4",
+    fontSize: 15, fontWeight: 700, marginTop: 6,
+  },
+  btnGhost: {
+    width: "100%", padding: "12px 16px", borderRadius: 11,
+    border: "1.5px solid #D8CEBB", background: "transparent", color: "#5c5648",
+    fontSize: 14, fontWeight: 600, marginTop: 10,
+  },
+  btnDanger: {
+    width: "100%", padding: "13px 16px", borderRadius: 11,
+    border: "1.5px solid #B5542B", background: "transparent", color: "#B5542B",
+    fontSize: 14, fontWeight: 700, marginTop: 10,
+  },
+
+  /* SHELL POST LOGIN */
+  screenWrap: { flex: 1, display: "flex", flexDirection: "column", minHeight: "100vh" },
+  topBar: {
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    padding: "16px 18px 12px", background: "#1F4D3A", color: "#F2EDE4",
+  },
+  topBarLeft: { display: "flex", alignItems: "center", gap: 10 },
+  miniStamp: {
+    width: 34, height: 34, borderRadius: 9, background: "#B5542B",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 13, flexShrink: 0,
+  },
+  topBarName: { fontWeight: 700, fontSize: 14.5 },
+  topBarSub: { fontSize: 11, opacity: 0.75 },
+  topBarRight: { display: "flex", alignItems: "center", gap: 8 },
+  walletPill: {
+    display: "flex", alignItems: "center", gap: 6,
+    background: "rgba(217,165,63,0.18)", color: "#D9A53F",
+    padding: "7px 11px", borderRadius: 20, fontSize: 12.5, fontWeight: 700,
+    fontFamily: "'JetBrains Mono', monospace",
+  },
+  iconBtn: {
+    width: 32, height: 32, borderRadius: 9, border: "none",
+    background: "rgba(255,255,255,0.08)", color: "#F2EDE4",
+    display: "flex", alignItems: "center", justifyContent: "center",
+  },
+
+  roleToggleWrap: { display: "flex", gap: 6, padding: "12px 18px", background: "#1F4D3A" },
+  roleBtn: {
+    flex: 1, padding: "9px 10px", borderRadius: 9, border: "1.5px solid rgba(242,237,228,0.25)",
+    background: "transparent", color: "rgba(242,237,228,0.7)", fontSize: 12.5, fontWeight: 600,
+  },
+  roleBtnActive: { background: "#F2EDE4", color: "#1F4D3A", border: "1.5px solid #F2EDE4" },
+
+  content: { flex: 1, overflowY: "auto", paddingBottom: 90 },
+
+  bottomNav: {
+    position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
+    width: "100%", maxWidth: 430, display: "flex",
+    background: "#FFFDF9", borderTop: "1px solid #E5DDCB",
+    padding: "8px 10px calc(8px + env(safe-area-inset-bottom))",
+  },
+  navBtn: {
+    flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+    background: "none", border: "none", color: "#A89E8E", padding: "6px 0",
+  },
+  navBtnActive: { color: "#B5542B" },
+  navLabel: { fontSize: 10.5, fontWeight: 600 },
+  navBadge: { position: "absolute", top: -3, right: -4, width: 8, height: 8, borderRadius: "50%", border: "1.5px solid #FFFDF9" },
+
+  /* FEED */
+  feedPad: { padding: "18px 18px 8px" },
+  sectionHeading: { margin: "20px 0 10px" },
+  sectionTitle: { fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 18, color: "#1A1814" },
+  sectionSubtitle: { fontSize: 12.5, color: "#8a8276", marginTop: 2 },
+
+  publishCard: {
+    width: "100%", display: "flex", alignItems: "center", gap: 14,
+    padding: "16px 16px", borderRadius: 14, border: "none",
+    background: "#B5542B", textAlign: "left",
+  },
+  publishCardIcon: {
+    width: 42, height: 42, borderRadius: 11, background: "rgba(242,237,228,0.18)",
+    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
+  publishCardTitle: { color: "#F2EDE4", fontWeight: 700, fontSize: 15 },
+  publishCardSub: { color: "rgba(242,237,228,0.8)", fontSize: 12, marginTop: 2 },
+
+  kycBanner: {
+    width: "100%", display: "flex", alignItems: "center", gap: 10,
+    padding: "13px 14px", borderRadius: 12, border: "1.5px solid #D9A53F",
+    background: "rgba(217,165,63,0.12)", color: "#8a6a1f", marginBottom: 6, textAlign: "left",
+  },
+  kycBannerTitle: { fontWeight: 700, fontSize: 13, color: "#1A1814" },
+  kycBannerSub: { fontSize: 11.5, color: "#6b5d3f", marginTop: 1 },
+
+  /* TICKET */
+  ticket: {
+    width: "100%", textAlign: "left", border: "1px solid #E5DDCB",
+    background: "#FFFDF9", borderRadius: 14, padding: 14, marginBottom: 10,
+    position: "relative", display: "block",
+  },
+  ticketTopRow: { display: "flex", gap: 10, alignItems: "flex-start" },
+  ticketIconWrap: {
+    width: 34, height: 34, borderRadius: 9, background: "#1F4D3A",
+    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
+  ticketTitle: { fontWeight: 700, fontSize: 13.5, color: "#1A1814" },
+  ticketDesc: {
+    fontSize: 12, color: "#6b6457", marginTop: 2,
+    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+  },
+  statusChip: {
+    fontSize: 10, fontWeight: 700, color: "#fff", padding: "4px 8px",
+    borderRadius: 20, flexShrink: 0, whiteSpace: "nowrap",
+  },
+  ticketDivider: { borderTop: "1px dashed #E5DDCB", margin: "11px 0 9px" },
+  ticketBottomRow: { display: "flex", alignItems: "center", gap: 14 },
+  ticketMeta: { display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#8a8276" },
+  ticketAmount: {
+    marginLeft: "auto", fontWeight: 700, fontSize: 13.5, color: "#1F4D3A",
+    fontFamily: "'JetBrains Mono', monospace",
+  },
+  ticketLockedOverlay: {
+    marginTop: 9, display: "flex", alignItems: "center", gap: 5,
+    fontSize: 11, color: "#B5542B", fontWeight: 600,
+  },
+
+  emptyState: { textAlign: "center", padding: "40px 20px", color: "#8a8276" },
+  emptyTitle: { fontWeight: 700, fontSize: 14, color: "#5c5648", marginTop: 10 },
+  emptyText: { fontSize: 12.5, marginTop: 4, lineHeight: 1.5 },
+
+  /* PUBLISH */
+  screenPad: { padding: "16px 18px 30px" },
+  screenHeader: { display: "flex", alignItems: "center", gap: 10, marginBottom: 18 },
+  backBtn: {
+    width: 34, height: 34, borderRadius: 9, border: "1px solid #E5DDCB",
+    background: "#FFFDF9", display: "flex", alignItems: "center", justifyContent: "center",
+  },
+  screenHeaderTitle: { fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 18, color: "#1A1814" },
+
+  categoryGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, marginBottom: 16 },
+  categoryCard: {
+    display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+    padding: "14px 8px", borderRadius: 12, border: "1.5px solid #E5DDCB",
+    background: "#FFFDF9",
+  },
+  categoryCardActive: { background: "#1F4D3A", border: "1.5px solid #1F4D3A" },
+  categoryCardLabel: { fontSize: 11.5, fontWeight: 600, textAlign: "center", lineHeight: 1.3 },
+
+  helperRow: { fontSize: 11.5, color: "#8a8276", marginTop: -10, marginBottom: 16 },
+  chipRow: { display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" },
+  chip: {
+    padding: "8px 14px", borderRadius: 20, border: "1.5px solid #E5DDCB",
+    background: "#FFFDF9", fontSize: 12.5, fontWeight: 600, color: "#5c5648",
+  },
+  chipActive: { background: "#B5542B", border: "1.5px solid #B5542B", color: "#F2EDE4" },
+
+  recapBox: {
+    background: "#FFFDF9", border: "1px solid #E5DDCB", borderRadius: 14,
+    padding: "16px 16px", marginTop: 4, marginBottom: 14,
+  },
+  recapRow: { display: "flex", justifyContent: "space-between", fontSize: 14, color: "#1A1814", marginBottom: 6, fontWeight: 600 },
+  recapRowSmall: { display: "flex", justifyContent: "space-between", fontSize: 12, color: "#8a8276", marginBottom: 4 },
+  recapDivider: { borderTop: "1px dashed #E5DDCB", margin: "10px 0" },
+  recapRowTotal: { display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 800, color: "#B5542B" },
+
+  warningBox: {
+    display: "flex", alignItems: "center", gap: 8, color: "#B5542B",
+    background: "rgba(181,84,43,0.1)", padding: "10px 12px", borderRadius: 10,
+    fontSize: 12.5, marginBottom: 14, fontWeight: 600,
+  },
+
+  /* KYC */
+  kycIntro: { fontSize: 13, color: "#6b6457", lineHeight: 1.6, marginBottom: 16 },
+  kycPendingBox: {
+    display: "flex", alignItems: "center", gap: 8, background: "rgba(217,165,63,0.15)",
+    color: "#8a6a1f", padding: "10px 12px", borderRadius: 10, fontSize: 12.5, marginBottom: 16, fontWeight: 600,
+  },
+  kycVerifiedBox: {
+    textAlign: "center", padding: "30px 20px", background: "rgba(31,77,58,0.08)",
+    borderRadius: 16, marginBottom: 16,
+  },
+  kycVerifiedTitle: { fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 17, color: "#1F4D3A", marginTop: 10 },
+  kycVerifiedSub: { fontSize: 12.5, color: "#5c5648", marginTop: 6, lineHeight: 1.5 },
+
+  uploadRow: {
+    display: "flex", alignItems: "center", gap: 12, padding: "10px 12px",
+    background: "#FFFDF9", border: "1px solid #E5DDCB", borderRadius: 12, marginBottom: 10,
+  },
+  uploadRowLeft: { display: "flex", alignItems: "center", gap: 10, flex: 1 },
+  uploadThumb: { width: 40, height: 40, borderRadius: 8, objectFit: "cover" },
+  uploadThumbPlaceholder: {
+    width: 40, height: 40, borderRadius: 8, background: "#EFE8D9",
+    display: "flex", alignItems: "center", justifyContent: "center",
+  },
+  uploadLabel: { fontSize: 12.5, fontWeight: 700, color: "#1A1814" },
+  uploadStatus: { fontSize: 11, color: "#8a8276", marginTop: 1 },
+  uploadBtn: {
+    border: "1.5px solid #1F4D3A", background: "transparent", color: "#1F4D3A",
+    fontSize: 11.5, fontWeight: 700, padding: "7px 10px", borderRadius: 8,
+    display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", cursor: "pointer",
+  },
+  docPreviewGrid: { display: "flex", gap: 8, marginTop: 4 },
+  docPreviewImg: { width: 60, height: 60, borderRadius: 8, objectFit: "cover", border: "1px solid #E5DDCB" },
+
+  /* DETAIL */
+  detailHeaderCard: { background: "#FFFDF9", border: "1px solid #E5DDCB", borderRadius: 14, padding: 14, marginBottom: 14 },
+  detailDesc: { fontSize: 14, color: "#1A1814", lineHeight: 1.5, marginBottom: 10 },
+  detailMetaRow: { display: "flex", alignItems: "center", gap: 10 },
+
+  amountsGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 },
+  amountBox: { background: "#FFFDF9", border: "1px solid #E5DDCB", borderRadius: 12, padding: "10px 12px" },
+  amountBoxLabel: { fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 },
+  amountBoxValue: { fontSize: 15, fontWeight: 800, marginTop: 3, fontFamily: "'JetBrains Mono', monospace" },
+
+  peopleRow: { display: "flex", gap: 10, marginBottom: 18 },
+  personChip: {
+    flex: 1, display: "flex", alignItems: "center", gap: 9,
+    background: "#FFFDF9", border: "1px solid #E5DDCB", borderRadius: 12, padding: "9px 11px",
+  },
+  personAvatar: {
+    width: 30, height: 30, borderRadius: "50%", background: "#1F4D3A", color: "#F2EDE4",
+    display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0,
+  },
+  personChipLabel: { fontSize: 10, color: "#8a8276", textTransform: "uppercase", letterSpacing: 0.3 },
+  personChipName: { fontSize: 12.5, fontWeight: 700, color: "#1A1814" },
+  personChipLevel: { fontSize: 10, fontWeight: 700, marginTop: 1 },
+
+  timelineWrap: { marginBottom: 18 },
+  timelineRow: { display: "flex", gap: 10, marginBottom: 12 },
+  timelineDot: { width: 9, height: 9, borderRadius: "50%", background: "#B5542B", marginTop: 4, flexShrink: 0 },
+  timelineLabel: { fontSize: 12.5, fontWeight: 600, color: "#1A1814" },
+  timelineTime: { fontSize: 10.5, color: "#8a8276", marginTop: 1 },
+
+  proofBlock: { marginBottom: 16 },
+  proofLabel: { display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, color: "#1F4D3A", marginBottom: 6 },
+  proofMedia: { width: "100%", borderRadius: 12, border: "1px solid #E5DDCB" },
+
+  actionsZone: { marginTop: 6 },
+
+  /* DIRECT COMMISSION BADGE */
+  directBadge: {
+    position: "absolute", top: -9, left: 12, background: "#B5542B", color: "#F2EDE4",
+    fontSize: 9, fontWeight: 800, padding: "3px 8px", borderRadius: 20, letterSpacing: 0.4,
+  },
+  directBanner: {
+    display: "flex", alignItems: "center", gap: 8, background: "rgba(181,84,43,0.1)",
+    color: "#8a4327", padding: "11px 13px", borderRadius: 10, fontSize: 12, fontWeight: 600,
+    marginBottom: 14,
+  },
+
+  /* FAVORIS SHORTCUT */
+  favorisShortcut: {
+    width: "100%", display: "flex", alignItems: "center", gap: 9,
+    background: "rgba(181,84,43,0.08)", border: "1.5px solid rgba(181,84,43,0.3)",
+    borderRadius: 12, padding: "11px 13px", marginTop: 10, textAlign: "left",
+  },
+  favorisShortcutText: { flex: 1, fontSize: 12, fontWeight: 600, color: "#1A1814" },
+
+  myLevelCard: {
+    width: "100%", display: "flex", alignItems: "center", gap: 11,
+    background: "#FFFDF9", border: "1px solid #E5DDCB", borderRadius: 13,
+    padding: "12px 13px", marginBottom: 8, textAlign: "left",
+  },
+  levelBadgeBig: { width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  myLevelTitle: { fontWeight: 700, fontSize: 13.5, color: "#1A1814" },
+  myLevelSub: { fontSize: 11.5, color: "#8a8276", marginTop: 1 },
+
+  favoriteToggle: {
+    width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+    background: "transparent", border: "1.5px solid #B5542B", color: "#B5542B",
+    fontSize: 12.5, fontWeight: 700, padding: "10px 12px", borderRadius: 11, marginBottom: 14,
+  },
+
+  chatEntryBtn: {
+    width: "100%", display: "flex", alignItems: "center", gap: 10,
+    background: "rgba(31,77,58,0.08)", border: "1px solid rgba(31,77,58,0.25)",
+    borderRadius: 12, padding: "11px 13px", marginBottom: 16, textAlign: "left",
+  },
+  chatEntryText: { flex: 1, fontSize: 12.5, fontWeight: 700, color: "#1F4D3A" },
+  chatUnreadDot: {
+    position: "absolute", top: -2, right: -2, width: 8, height: 8, borderRadius: "50%",
+    background: "#B5542B", border: "1.5px solid #F2EDE4",
+  },
+  chatEntryCallBtns: { display: "flex", gap: 6 },
+  chatEntryCallIcon: {
+    width: 28, height: 28, borderRadius: 8, background: "#1F4D3A", color: "#F2EDE4",
+    display: "flex", alignItems: "center", justifyContent: "center",
+  },
+
+  chatModalBox: {
+    background: "#F2EDE4", borderRadius: 18, padding: 16, width: "100%", maxWidth: 380,
+    height: "min(560px, 80vh)", display: "flex", flexDirection: "column",
+  },
+  modalIconBtn: {
+    width: 28, height: 28, borderRadius: 8, border: "none", background: "#1F4D3A", color: "#F2EDE4",
+    display: "flex", alignItems: "center", justifyContent: "center",
+  },
+  chatThread: { flex: 1, overflowY: "auto", padding: "6px 2px", display: "flex", flexDirection: "column", gap: 8 },
+  chatEmptyHint: { textAlign: "center", color: "#8a8276", fontSize: 12, padding: "30px 14px", lineHeight: 1.5 },
+  chatBubbleRow: { display: "flex" },
+  chatBubble: { maxWidth: "78%", borderRadius: 14, padding: "8px 11px" },
+  chatBubbleMine: { background: "#1F4D3A", color: "#F2EDE4", borderBottomRightRadius: 4 },
+  chatBubbleTheirs: { background: "#FFFDF9", color: "#1A1814", border: "1px solid #E5DDCB", borderBottomLeftRadius: 4 },
+  chatBubbleText: { fontSize: 13, lineHeight: 1.4 },
+  chatBubblePhoto: { width: "100%", maxWidth: 180, borderRadius: 10, marginBottom: 6, display: "block" },
+  chatGpsChip: { display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, marginBottom: 4 },
+  chatBubbleTime: { fontSize: 9.5, marginTop: 3, textAlign: "right" },
+  chatQuickRow: { display: "flex", gap: 8, padding: "8px 0 4px" },
+  chatQuickBtn: {
+    display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: "#1F4D3A",
+    background: "rgba(31,77,58,0.08)", border: "none", padding: "7px 11px", borderRadius: 20,
+  },
+  chatInputRow: { display: "flex", gap: 8, marginTop: 6 },
+  chatInput: {
+    flex: 1, padding: "11px 13px", borderRadius: 22, border: "1.5px solid #E0D8C8",
+    background: "#FFFDF9", fontSize: 13.5,
+  },
+  chatSendBtn: {
+    width: 40, height: 40, borderRadius: "50%", border: "none", background: "#B5542B", color: "#F2EDE4",
+    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
+
+  callModalBox: {
+    background: "#1A1814", borderRadius: 20, padding: "32px 22px", width: "100%", maxWidth: 320,
+    display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center",
+  },
+  callVideoSelf: { width: 140, height: 140, borderRadius: "50%", objectFit: "cover", background: "#333", marginBottom: 16 },
+  callAvatarBig: {
+    width: 100, height: 100, borderRadius: "50%", background: "#1F4D3A", color: "#F2EDE4",
+    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, fontWeight: 800,
+    marginBottom: 16, fontFamily: FONT_DISPLAY,
+  },
+  callName: { color: "#F2EDE4", fontWeight: 700, fontSize: 16, fontFamily: FONT_DISPLAY },
+  callTimer: { color: "#D9A53F", fontSize: 13, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" },
+  callErrorNote: { color: "rgba(242,237,228,0.6)", fontSize: 11, marginTop: 10, lineHeight: 1.4 },
+  callControls: { display: "flex", gap: 18, marginTop: 26, alignItems: "center" },
+  callControlBtn: {
+    width: 46, height: 46, borderRadius: "50%", border: "none", background: "rgba(242,237,228,0.12)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+  },
+  callEndBtn: {
+    width: 56, height: 56, borderRadius: "50%", border: "none", background: "#B5542B",
+    display: "flex", alignItems: "center", justifyContent: "center",
+  },
+
+  ratingRow: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  ratingRowLabel: { fontSize: 12.5, fontWeight: 600, color: "#1A1814", flex: 1, paddingRight: 8 },
+  starPicker: { display: "flex", gap: 2 },
+  starPickerBtn: { background: "none", border: "none", padding: 2 },
+  ratingTotalRow: {
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+    background: "rgba(217,165,63,0.15)", padding: "10px 12px", borderRadius: 10,
+    fontSize: 12.5, fontWeight: 700, color: "#1A1814", margin: "6px 0 14px",
+  },
+  ratingTotalValue: { fontSize: 16, fontWeight: 800, color: "#B5542B" },
+
+  ratingSummaryBlock: {
+    background: "#FFFDF9", border: "1px solid #E5DDCB", borderRadius: 12, padding: "12px 13px", marginBottom: 16,
+  },
+  ratingSummaryGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 8 },
+  ratingSummaryItem: { display: "flex", justifyContent: "space-between", fontSize: 11, color: "#6b6457" },
+  ratingSummaryValue: { fontWeight: 700, color: "#1A1814" },
+  ratingSummaryComment: { fontSize: 12, color: "#5c5648", marginTop: 8, fontStyle: "italic" },
+
+  favoriCard: { background: "#FFFDF9", border: "1px solid #E5DDCB", borderRadius: 13, marginBottom: 10, overflow: "hidden" },
+  favoriCardHeader: { width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "12px 13px", background: "transparent", border: "none" },
+  favoriCardName: { fontWeight: 700, fontSize: 13.5, color: "#1A1814" },
+  favoriCardMeta: { fontSize: 11, color: "#8a8276", marginTop: 2, display: "flex", alignItems: "center", gap: 3 },
+  favoriCardFooter: { display: "flex", gap: 8, padding: "0 13px 12px" },
+  favoriSendBtn: {
+    flex: 1, background: "#B5542B", color: "#F2EDE4", border: "none", borderRadius: 9,
+    padding: "9px 10px", fontSize: 12, fontWeight: 700,
+  },
+  favoriRemoveBtn: {
+    width: 36, background: "transparent", border: "1px solid #E5DDCB", borderRadius: 9,
+    display: "flex", alignItems: "center", justifyContent: "center", color: "#8a8276",
+  },
+
+  profileHero: { display: "flex", flexDirection: "column", alignItems: "center", padding: "10px 0 20px" },
+  profileAvatarBig: {
+    width: 72, height: 72, borderRadius: "50%", background: "#1F4D3A", color: "#F2EDE4",
+    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 800,
+    fontFamily: FONT_DISPLAY, marginBottom: 10,
+  },
+  profileName: { fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 19, color: "#1A1814" },
+  profileLevelBadge: {
+    display: "flex", alignItems: "center", gap: 5, color: "#F2EDE4", fontSize: 10.5, fontWeight: 800,
+    padding: "5px 11px", borderRadius: 20, marginTop: 8, letterSpacing: 0.3,
+  },
+  profileVerified: {
+    display: "flex", alignItems: "center", gap: 5, color: "#1F4D3A", fontSize: 11.5, fontWeight: 600, marginTop: 8,
+  },
+  profileNoteHero: {
+    background: "#FFFDF9", border: "1px solid #E5DDCB", borderRadius: 14, padding: "16px 18px",
+    textAlign: "center", marginBottom: 18,
+  },
+  profileNoteValue: { fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 28, color: "#B5542B" },
+  profileNoteSub: { fontSize: 12, color: "#8a8276", marginTop: 2 },
+  profileProgressBar: { height: 6, background: "#EFE8D9", borderRadius: 4, marginTop: 10, overflow: "hidden" },
+  profileProgressFill: { height: "100%", background: "#D9A53F", borderRadius: 4 },
+
+  detailNotesBox: { background: "#FFFDF9", border: "1px solid #E5DDCB", borderRadius: 12, padding: "10px 13px", marginBottom: 6 },
+  detailNoteRow: { display: "flex", alignItems: "center", gap: 8, padding: "7px 0" },
+  detailNoteLabel: { flex: 1, fontSize: 12, color: "#1A1814", fontWeight: 600 },
+  detailNoteStars: { display: "flex", gap: 1 },
+  detailNoteValue: { fontSize: 12, fontWeight: 700, color: "#8a8276", width: 28, textAlign: "right" },
+
+  specialiteRow: { display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 6 },
+  specialiteChip: {
+    fontSize: 11, fontWeight: 600, color: "#1F4D3A", background: "rgba(31,77,58,0.1)",
+    padding: "6px 11px", borderRadius: 20,
+  },
+
+  avisCard: { background: "#FFFDF9", border: "1px solid #E5DDCB", borderRadius: 11, padding: "10px 12px", marginBottom: 8 },
+  avisStars: { display: "flex", alignItems: "center", gap: 2 },
+  avisAuthor: { fontSize: 11, color: "#8a8276", marginLeft: 6, fontWeight: 600 },
+  avisText: { fontSize: 12, color: "#5c5648", marginTop: 5, lineHeight: 1.4 },
+
+  /* MODAL */
+  modalOverlay: {
+    position: "fixed", inset: 0, background: "rgba(26,24,20,0.65)",
+    display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20,
+  },
+  modalBox: { background: "#F2EDE4", borderRadius: 18, padding: 18, width: "100%", maxWidth: 360 },
+  modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  modalTitle: { fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 16 },
+  modalClose: { width: 28, height: 28, borderRadius: 8, border: "none", background: "#E5DDCB", display: "flex", alignItems: "center", justifyContent: "center" },
+  modalNote: { fontSize: 11, color: "#8a8276", marginTop: 10, lineHeight: 1.5 },
+
+  captureVideo: { width: "100%", borderRadius: 12, background: "#000", aspectRatio: "4/3", objectFit: "cover" },
+  captureControls: { display: "flex", gap: 8, marginTop: 12 },
+  signatureCanvas: { width: "100%", height: 160, borderRadius: 10, border: "1.5px dashed #B5542B", touchAction: "none" },
+
+  /* TOAST */
+  toast: {
+    position: "fixed", bottom: 86, left: "50%", transform: "translateX(-50%)",
+    background: "#1A1814", color: "#F2EDE4", padding: "11px 18px", borderRadius: 30,
+    fontSize: 12.5, fontWeight: 600, zIndex: 60, maxWidth: 340, textAlign: "center",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+  },
+  toastError: { background: "#B5542B" },
+
+  /* ADMIN DASHBOARD */
+  adminWrap: { minHeight: "100vh", display: "flex", flexDirection: "column", background: "#F2EDE4" },
+  adminTopBar: {
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    padding: "16px 24px", background: "#1A1814", color: "#F2EDE4",
+  },
+  adminTopBarLeft: { display: "flex", alignItems: "center", gap: 12 },
+  adminTitle: { fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 17 },
+  adminSubtitle: { fontSize: 11.5, opacity: 0.6 },
+  adminLogoutBtn: {
+    display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.1)",
+    border: "none", color: "#F2EDE4", padding: "9px 14px", borderRadius: 9, fontSize: 12.5, fontWeight: 600,
+  },
+  adminTabs: { display: "flex", gap: 4, padding: "14px 24px 0", borderBottom: "1px solid #E5DDCB" },
+  adminTabBtn: {
+    display: "flex", alignItems: "center", gap: 6, background: "none", border: "none",
+    color: "#8a8276", fontSize: 13, fontWeight: 600, padding: "10px 16px", borderRadius: "10px 10px 0 0",
+    borderBottom: "3px solid transparent",
+  },
+  adminTabBtnActive: { color: "#B5542B", borderBottom: "3px solid #B5542B", background: "#FFFDF9" },
+  adminContent: { flex: 1, padding: "24px", maxWidth: 1100, margin: "0 auto", width: "100%" },
+
+  adminStatGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginBottom: 22 },
+  adminStatCard: {
+    display: "flex", alignItems: "center", gap: 14, background: "#FFFDF9",
+    border: "1px solid #E5DDCB", borderRadius: 14, padding: "16px 18px",
+  },
+  adminStatCardSmall: { padding: "12px 16px" },
+  adminStatIconWrap: { width: 40, height: 40, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  adminStatValue: { fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 19, color: "#1A1814" },
+  adminStatLabel: { fontSize: 11.5, color: "#8a8276", marginTop: 2 },
+
+  adminStatusBars: { background: "#FFFDF9", border: "1px solid #E5DDCB", borderRadius: 14, padding: "16px 18px", marginBottom: 10 },
+  adminStatusBarRow: { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 },
+  adminStatusBarLabel: { width: 130, fontSize: 12.5, fontWeight: 600, color: "#1A1814", flexShrink: 0 },
+  adminStatusBarTrack: { flex: 1, height: 10, background: "#EFE8D9", borderRadius: 6, overflow: "hidden" },
+  adminStatusBarFill: { height: "100%", borderRadius: 6 },
+  adminStatusBarCount: { width: 30, textAlign: "right", fontSize: 12.5, fontWeight: 700, color: "#5c5648" },
+
+  adminTableWrap: { background: "#FFFDF9", border: "1px solid #E5DDCB", borderRadius: 14, overflow: "auto" },
+  adminTable: { width: "100%", borderCollapse: "collapse", fontSize: 13 },
+  adminTh: {
+    textAlign: "left", padding: "12px 16px", fontSize: 11, fontWeight: 700, color: "#8a8276",
+    textTransform: "uppercase", letterSpacing: 0.3, borderBottom: "2px solid #E5DDCB", whiteSpace: "nowrap",
+  },
+  adminTd: { padding: "11px 16px", borderBottom: "1px solid #EFE8D9", color: "#1A1814" },
+  adminTdMono: { padding: "11px 16px", borderBottom: "1px solid #EFE8D9", color: "#1A1814", fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap" },
+  adminTdMuted: { padding: "11px 16px", borderBottom: "1px solid #EFE8D9", color: "#8a8276", textAlign: "center" },
+  adminKycBadge: {
+    display: "inline-block", fontSize: 10, fontWeight: 700, color: "#fff",
+    padding: "4px 9px", borderRadius: 20, whiteSpace: "nowrap",
+  },
+};
+
+/* ============================= MOUNT ============================= */
+try {
+  const root = ReactDOM.createRoot(document.getElementById("root"));
+  root.render(<App />);
+  document.getElementById("boot-loader").remove();
+} catch (mountError) {
+  console.error("Erreur au montage de l'application:", mountError);
+  window.ceShowFatalError(
+    "L'application s'est chargée mais a planté en démarrant.",
+    String(mountError && mountError.message ? mountError.message : mountError) +
+      (mountError && mountError.stack ? "\n\n" + mountError.stack.split("\n").slice(0, 4).join("\n") : "")
+  );
+}
+</script>
+</body>
+</html>
+
+
